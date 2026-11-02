@@ -1,6 +1,8 @@
 # mapadisco
 
-Mapa de uso de disco para Windows desde la terminal. **Solo lectura**: no borra ni modifica nada.
+Mapa de uso de disco para Windows desde la terminal: te muestra en qué se va el espacio y, con `mapadisco -clean`,
+libera lo que se puede borrar con seguridad (cachés, temporales, Papelera) y te dice a dónde ir con el resto.
+El análisis es de **solo lectura**.
 
 📘 **[Guía de usuario completa](docs/guia-de-usuario.md)**: instalación, cómo leer el reporte, todas las opciones, qué hacer con lo que encuentres y solución de problemas.
 
@@ -26,6 +28,8 @@ mapadisco -admin                  # relanza como Administrador (ve System Volume
 mapadisco -depth 4 -min 500MB     # árbol más profundo y con carpetas más pequeñas
 mapadisco -no-expand              # no bajar más allá de -depth
 mapadisco -csv reporte.csv        # exporta las carpetas >= 10 MB para Excel (separador ;)
+mapadisco -clean                  # libera espacio: muestra qué se puede limpiar y pregunta qué borrar
+mapadisco -clean -admin           # lo mismo, incluyendo los temporales de Windows
 mapadisco D:\                     # otra unidad o carpeta
 mapadisco -h                      # todas las opciones
 ```
@@ -37,6 +41,9 @@ mapadisco -h                      # todas las opciones
 - **Sospechosos habituales**: caché de shaders de la GPU, discos de WSL/Docker (`.vhdx`), hiberfil.sys, pagefile, Windows.old, caché de Windows Update, puntos de restauración, Steam/Xbox/Epic, cachés de npm/pip/Gradle, Android SDK, navegadores, etc., cada uno con una sugerencia.
 - **Archivos más grandes** y **peso por tipo de archivo**.
 - **Carpetas sin acceso**: sin permisos de Administrador, su contenido no se cuenta.
+- **Limpieza (`-clean`)**: caché de shaders, temporales, Papelera, volcados de errores y cachés de npm/pip/yarn, con
+  confirmación. Si Windows no deja borrar algo (archivo en uso o sin permiso) lo salta y te dice qué hacer; y lista con
+  sus pasos lo que solo se libera a mano (Windows Update, WinSxS, WSL, Docker, juegos, hibernación…).
 
 ## Notas de precisión
 

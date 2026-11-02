@@ -15,7 +15,7 @@ Windows 10 / 11 (64 bits) · Para saber qué versión tienes: `mapadisco -versio
 7. [Ejemplos por caso de uso](#7-ejemplos-por-caso-de-uso)
 8. [Exportar a Excel (CSV)](#8-exportar-a-excel-csv)
 9. [Modo Administrador](#9-modo-administrador)
-10. [Qué hacer con lo que encuentres](#10-qué-hacer-con-lo-que-encuentres)
+10. [Liberar espacio](#10-liberar-espacio)
 11. [Preguntas frecuentes](#11-preguntas-frecuentes)
 12. [Solución de problemas](#12-solución-de-problemas)
 13. [Desinstalación](#13-desinstalación)
@@ -38,10 +38,16 @@ Recorre una unidad completa (o una carpeta) en pocos segundos y te muestra:
 | **Peso por tipo de archivo** | Cuánto suman los `.vhdx`, `.iso`, `.mp4`, `.dll`, etc. |
 | **Carpetas sin acceso** | Lo que no se pudo leer por falta de permisos, para que sepas qué quedó sin contar. |
 
+Y con **`mapadisco -clean`** libera espacio: borra cachés y temporales que se regeneran solos, después de mostrarte
+cuánto ocupa cada uno y preguntarte qué limpiar. Lo que no se puede borrar con seguridad te lo explica paso a paso
+(ver la [sección 10](#10-liberar-espacio)).
+
 ### Lo que NO hace
 
-- **No borra, mueve ni modifica nada del disco que analiza.** Es de solo lectura. Las sugerencias son eso: sugerencias que tú decides si aplicar.
-  Lo único que escribe es su propia instalación (si aceptas instalarlo) y el CSV que pidas con `-csv`.
+- **El análisis (`mapadisco`) no borra, mueve ni modifica nada.** Es de solo lectura. Las sugerencias son eso: sugerencias que tú decides si aplicar.
+- **Solo `mapadisco -clean` borra**, y solo las categorías que aparecen en su lista, después de preguntarte (o con `-yes`).
+  Nunca toca tus documentos, fotos, descargas, juegos ni archivos del sistema.
+- Fuera de eso, solo escribe su propia instalación (si aceptas instalarlo) y el CSV que pidas con `-csv`.
 - No se conecta a internet ni envía información a ningún lado.
 - No corre en segundo plano ni queda residente: solo funciona mientras lo ejecutas.
 
@@ -326,6 +332,9 @@ mapadisco [opciones] [ruta]
 | `-install` | — | Instala mapadisco para tu usuario sin preguntar y sale. Ver [sección 3](#3-instalación). |
 | `-uninstall` | — | Desinstala mapadisco: lo quita del `PATH` y borra su carpeta. Ver [sección 13](#13-desinstalación). |
 | `-no-install` | desactivado | No ofrece instalarse; para usarlo portable sin que pregunte cada vez. |
+| `-clean` | — | Libera espacio: mide lo que se puede limpiar, pregunta qué borrar y lo borra. Ver [sección 10](#10-liberar-espacio). |
+| `-yes` | desactivado | Con `-clean`: limpia todas las categorías sin preguntar. |
+| `-only LISTA` | todas | Con `-clean`: solo esas categorías, separadas por coma: `shaders`, `temp`, `temp-sistema`, `papelera`, `volcados`, `dev`. |
 | `-version` | — | Muestra la versión y sale. |
 | `-h` | — | Muestra la ayuda. |
 
@@ -339,7 +348,9 @@ Las opciones también se pueden escribir con dos guiones (`--depth 4`) y con `=`
 |---|---|
 | `0` | Terminó correctamente. |
 | `1` | Error al exportar el CSV, al pedir permisos de Administrador, o al instalar o desinstalar. |
-| `2` | Opción inválida (p. ej. `-min mucho`) o la ruta no existe. |
+| `2` | Opción inválida (p. ej. `-min mucho`, una categoría desconocida en `-only`, o `-yes` sin `-clean`) o la ruta no existe. |
+
+Con `-clean`, que Windows no deje borrar algunos archivos **no** es un error: se informa y el código sigue siendo `0`.
 
 ---
 
@@ -396,6 +407,13 @@ mapadisco -no-color -no-progress > reporte.txt
 mapadisco -csv "%USERPROFILE%\Desktop\disco.csv"
 ```
 
+**Liberar espacio**
+
+```
+mapadisco -clean
+mapadisco -clean -admin        (incluye los temporales de Windows)
+```
+
 **Disco mecánico (HDD) o unidad de red**
 
 ```
@@ -447,10 +465,85 @@ un pequeño espacio *no visible* (1 a 3 GB) es normal.
 
 ---
 
-## 10. Qué hacer con lo que encuentres
+## 10. Liberar espacio
 
-mapadisco **no borra nada**. Esta tabla resume acciones habituales; son referenciales. Antes de borrar, asegúrate de que no
-necesitas esos datos. En un equipo de la empresa, consulta con el área de Tecnología antes de cambiar configuraciones del sistema.
+### Automático: `mapadisco -clean`
+
+```
+mapadisco -clean
+```
+
+1. **Mide** lo que se puede liberar y lo muestra numerado (datos de ejemplo):
+
+   ```
+   ── LIBERAR ESPACIO ────────────────────────────────────────────────
+       1     35,7 GB  Caché de shaders (GPU / DirectX)
+                      se regenera sola; los primeros minutos de cada juego pueden ir algo más lentos
+       2      2,1 GB  Temporales de tu usuario
+                      archivos temporales que dejan los programas
+       3    700,0 MB  Papelera de reciclaje
+                      lo que ya borraste; después no se puede recuperar
+             38,5 GB  en total
+
+   ¿Qué limpio? [t = todo · 1,3 = solo esos · Enter = nada]:
+   ```
+
+2. **Tú eliges:** `t` limpia todo, `1,3` solo esas categorías y Enter no borra nada.
+3. **Limpia** y te dice cuánto liberó en cada una, y el espacio libre del disco antes y después:
+
+   ```
+     ✓ Caché de shaders (GPU / DirectX): 35,7 GB liberados (2.140 archivos)
+     ✓ Papelera de reciclaje: 700,0 MB liberados (52 elementos)
+
+     Espacio libre en C:\ 174,5 GB → 210,9 GB (+36,4 GB)
+   ```
+
+4. Al final muestra **lo que se puede liberar a mano** (ver abajo).
+
+Qué categorías limpia:
+
+| Categoría (`-only`) | Qué borra | ¿Seguro? |
+|---|---|---|
+| Caché de shaders (`shaders`) | Contenido de `NVIDIA\DXCache`, `NVIDIA\GLCache`, `D3DSCache`, `AMD\DxCache`, `AMD\DxcCache`, `Intel\ShaderCache` en `%LOCALAPPDATA%` | Sí: se regenera al jugar. |
+| Temporales de tu usuario (`temp`) | Contenido de `%TEMP%` | Sí: los que estén en uso se saltan. |
+| Temporales de Windows (`temp-sistema`) | Contenido de `C:\Windows\Temp` | Sí. Requiere Administrador. |
+| Papelera de reciclaje (`papelera`) | Vacía la Papelera de todas las unidades | Sí, pero **no se puede deshacer**. |
+| Volcados e informes de errores (`volcados`) | `CrashDumps`, informes de errores de Windows (WER), `Minidump`, `MEMORY.DMP` | Sí. Parte requiere Administrador. |
+| Cachés de desarrollo (`dev`) | Contenido de las cachés de npm, pip y yarn | Sí: se vuelven a descargar cuando hacen falta. |
+
+Variantes:
+
+```
+mapadisco -clean -admin                 # como Administrador: incluye Temporales de Windows y volcados del sistema
+mapadisco -clean -yes                   # todo, sin preguntar (para scripts)
+mapadisco -clean -only shaders,temp     # solo esas categorías
+```
+
+### Si Windows no deja borrar algo
+
+mapadisco **no se detiene**: salta lo que no puede borrar, sigue con el resto y al final te dice por qué y a dónde ir:
+
+```
+  ⚠ Caché de shaders (GPU / DirectX): 34,9 GB liberados (2.100 archivos); Windows no dejó borrar 40:
+    · 40 en uso por otro programa (820,0 MB) → cierra los programas abiertos o reinicia, y vuelve a ejecutar mapadisco -clean
+      ej.: C:\Users\Usuario\AppData\Local\NVIDIA\DXCache\fc52a9389f221040.nvph
+    → A mano: cierra los juegos y el panel de la tarjeta gráfica y vuelve a intentar; o Liberador de espacio (cleanmgr) > «Caché de sombreador DirectX»
+    → Abrir la carpeta: explorer "C:\Users\Usuario\AppData\Local\NVIDIA\DXCache"
+```
+
+| Motivo | Qué hacer |
+|---|---|
+| **En uso por otro programa** | Cierra el programa (juego, navegador, el panel de la tarjeta gráfica…) o reinicia el equipo, y vuelve a ejecutar `mapadisco -clean`. |
+| **Sin permiso** | Ejecuta `mapadisco -clean -admin`. |
+| **Sigue sin poder** | Usa la ruta **A mano** que indica cada categoría, o abre la carpeta con el comando `explorer "…"` que muestra y borra su contenido tú mismo. |
+
+### A mano: lo que mapadisco no borra por su cuenta
+
+Al terminar, `mapadisco -clean` mide estas ubicaciones y muestra las que ocupan algo, con sus pasos. No las borra
+porque son del sistema (y deben limpiarse con las herramientas de Windows) o porque son datos tuyos.
+
+Antes de borrar, asegúrate de que no necesitas esos datos. En un equipo de la empresa, consulta con el área de
+Tecnología antes de cambiar configuraciones del sistema. Las acciones son referenciales:
 
 | Hallazgo | Acción sugerida | ¿Seguro? |
 |---|---|---|
@@ -487,7 +580,7 @@ Accesos que apuntan a otra carpeta, como `C:\Archivos de programa` → `C:\Progr
 mapadisco no entra en ellos para no contar lo mismo dos veces.
 
 **Borré archivos dentro de WSL (o Docker) pero el disco de Windows no recuperó espacio.**
-Es normal: el archivo `.vhdx` crece pero no se encoge solo. Hay que compactarlo (ver la [sección 10](#10-qué-hacer-con-lo-que-encuentres)).
+Es normal: el archivo `.vhdx` crece pero no se encoge solo. Hay que compactarlo (ver la [sección 10](#10-liberar-espacio)).
 
 **Desinstalé juegos y el espacio no volvió.**
 Revisa *Sospechosos habituales*: la caché de shaders de la tarjeta gráfica, los restos en `steamapps` y la papelera suelen quedar.
@@ -496,7 +589,14 @@ Revisa *Sospechosos habituales*: la caché de shaders de la tarjeta gráfica, lo
 Binarias (1 GB = 1024³ bytes), igual que el Explorador de Windows, para que los números coincidan.
 
 **¿Puede dañar algo?**
-No. Solo lee la estructura de carpetas: no abre el contenido de los archivos ni escribe nada, salvo el CSV si lo pides con `-csv`.
+El análisis, no: solo lee la estructura de carpetas, no abre el contenido de los archivos ni escribe nada (salvo el CSV
+si lo pides). `-clean` sí borra, pero solo cachés, temporales, la Papelera y volcados de errores, que Windows y los
+programas regeneran o no necesitan; nunca sigue accesos directos de carpeta (*junctions*) hacia otros lugares y nunca
+borra la carpeta de la categoría, solo su contenido. Lo único sin vuelta atrás es la Papelera: revísala antes si dudas.
+
+**¿Qué pasa si un juego o programa está abierto mientras limpio?**
+Windows no deja borrar los archivos que ese programa tiene abiertos. mapadisco los salta, borra el resto y te dice
+cuántos quedaron y qué hacer: cerrar el programa (o reiniciar) y volver a ejecutar `mapadisco -clean`.
 
 **¿Funciona en discos externos, USB o de red?**
 Sí: `mapadisco E:\` o `mapadisco \\servidor\carpeta`. En unidades lentas usa `-workers 4`. El resumen del disco y los sospechosos
@@ -519,6 +619,8 @@ habituales solo aparecen al analizar la raíz de una unidad con letra.
 | `no existe o no es una carpeta` | Revisa la ruta. Si tiene espacios, ponla entre comillas: `mapadisco "D:\Mis juegos"`. |
 | Una opción no hace efecto | Ponla **antes** de la ruta (ver [sección 6](#6-opciones)). |
 | Muy lento en un disco mecánico | Usa `-workers 4`. |
+| `-clean` dice *"Windows no dejó borrar…"* | Ver [Si Windows no deja borrar algo](#si-windows-no-deja-borrar-algo). |
+| `-clean` no muestra *Temporales de Windows* o los deja a medias | Requieren Administrador: `mapadisco -clean -admin`. |
 | El antivirus lo bloquea | Ver [Si Windows muestra una advertencia](#si-windows-muestra-una-advertencia). |
 
 ---

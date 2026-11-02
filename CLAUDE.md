@@ -5,8 +5,8 @@ Guía para Claude Code al trabajar en este repositorio.
 ## Qué es mapadisco
 
 Herramienta de terminal en Go que muestra en qué se va el espacio de un disco en Windows: árbol de carpetas pesadas,
-"sospechosos habituales", archivos más grandes, peso por tipo y exportación a CSV. **Solo lectura**: nunca borra ni
-modifica nada del disco que analiza. Se compila para Windows; el desarrollo se hace desde Linux/WSL.
+"sospechosos habituales", archivos más grandes, peso por tipo y exportación a CSV. El análisis es de **solo lectura**;
+`-clean` libera espacio borrando solo las categorías del catálogo de `internal/cleaner`, con confirmación. Se compila para Windows; el desarrollo se hace desde Linux/WSL.
 
 - Uso y alcance para el usuario: `docs/guia-de-usuario.md`.
 - Estructura de paquetes y cómo extender: `docs/arquitectura.md`.
@@ -59,10 +59,14 @@ main ── develop ── feat/<tema> | fix/<tema> | docs/<tema> | chore/<tema>
 ## Reglas del código
 
 - Solo `internal/winapi` llama a Win32 / `syscall`. El código exclusivo de Windows va en archivos `_windows.go`.
-- `format`, el modelo de `scanner` (`node.go`), el catálogo de `hotspots`, `report` y la lógica de rutas de
-  `installer` son portables y llevan pruebas que corren en Linux. `report` escribe en un `io.Writer`, nunca directo en la consola.
-- El programa no escribe en el disco analizado. Solo escribe su propia instalación (cuando el usuario acepta o usa
-  `-install`; `-uninstall` la quita) y el CSV que pide con `-csv`.
+- `format`, el modelo de `scanner` (`node.go`), el catálogo de `hotspots`, `report`, la lógica de rutas de
+  `installer` y todo `cleaner` son portables y llevan pruebas que corren en Linux. `report` escribe en un `io.Writer`, nunca directo en la consola.
+- El análisis no escribe en el disco. Lo único que borra es `-clean`, y solo lo de `cleaner.Auto` (cachés y temporales
+  que se regeneran, Papelera, volcados), después de mostrarlo y preguntar (o con `-yes`). Nunca sigue enlaces ni
+  junctions, nunca borra la carpeta raíz de una categoría ni rutas relativas o raíces de unidad (hay pruebas que lo
+  exigen). Lo demás va a `cleaner.Manual` como guía: no se borra. Además escribe su propia instalación y el CSV.
+- Al ampliar `cleaner.Auto`: solo cosas que se regeneran solas o que el usuario ya descartó; nunca datos del usuario
+  ni del sistema que tengan herramienta oficial (Windows Update, WinSxS): esos van a `cleaner.Manual`.
 - Los cambios al PATH del usuario conservan el tipo del valor (`REG_EXPAND_SZ`) y el resto de entradas tal cual:
   instalar y desinstalar deja el PATH idéntico (hay una prueba que lo exige).
 - Datos de prueba y ejemplos de la documentación: ficticios (`C:\Users\Usuario`), nunca rutas, nombres ni datos de un
