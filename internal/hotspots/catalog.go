@@ -30,9 +30,9 @@ var Catalog = []Hotspot{
 	{"Almacén WinSxS", []string{`Windows\WinSxS`}, "Sobreestimado por enlaces duros. Dism /Online /Cleanup-Image /StartComponentCleanup"},
 	{"Windows Installer (caché)", []string{`Windows\Installer`}, "No borrar a mano"},
 	{"Optimización de distribución", []string{`Windows\ServiceProfiles\NetworkService\AppData\Local\Microsoft\Windows\DeliveryOptimization`}, "Liberador de espacio > Archivos de optimización de distribución"},
-	{"Temporales del sistema", []string{`Windows\Temp`}, "Liberador de espacio > Archivos temporales"},
-	{"Volcados de memoria", []string{`Windows\MEMORY.DMP`, `Windows\Minidump`, `Users\*\AppData\Local\CrashDumps`, `ProgramData\Microsoft\Windows\WER`}, "Seguros de borrar"},
-	{"Papelera de reciclaje", []string{`$Recycle.Bin`}, "Vaciar la papelera"},
+	{"Temporales del sistema", []string{`Windows\Temp`}, "Se libera con: mapadisco -clean -admin"},
+	{"Volcados de memoria", []string{`Windows\MEMORY.DMP`, `Windows\Minidump`, `Users\*\AppData\Local\CrashDumps`, `ProgramData\Microsoft\Windows\WER`}, "Se libera con: mapadisco -clean"},
+	{"Papelera de reciclaje", []string{`$Recycle.Bin`}, "Se vacía con: mapadisco -clean"},
 
 	// Virtualización
 	{"Discos virtuales de WSL", []string{`Users\*\AppData\Local\Packages\*\LocalState\*.vhdx`, `Users\*\AppData\Local\wsl\*\*.vhdx`}, "No se reducen solos: wsl --shutdown y compactar con Optimize-VHD o diskpart"},
@@ -40,21 +40,21 @@ var Catalog = []Hotspot{
 	{"Hyper-V / VMs", []string{`ProgramData\Microsoft\Windows\Virtual Hard Disks`, `Users\Public\Documents\Hyper-V`, `Users\*\VirtualBox VMs`}, ""},
 
 	// Juegos y GPU
-	{"Caché de shaders (GPU / DirectX)", []string{`Users\*\AppData\Local\NVIDIA\DXCache`, `Users\*\AppData\Local\NVIDIA\GLCache`, `Users\*\AppData\Local\D3DSCache`, `Users\*\AppData\Local\AMD\DxCache`, `Users\*\AppData\Local\AMD\DxcCache`}, "Liberador de espacio > Caché de sombreador DirectX; en NVIDIA: Panel de control > Tamaño de caché del sombreador. Se regenera al jugar"},
+	{"Caché de shaders (GPU / DirectX)", []string{`Users\*\AppData\Local\NVIDIA\DXCache`, `Users\*\AppData\Local\NVIDIA\GLCache`, `Users\*\AppData\Local\D3DSCache`, `Users\*\AppData\Local\AMD\DxCache`, `Users\*\AppData\Local\AMD\DxcCache`}, "Se libera con: mapadisco -clean (se regenera al jugar). Para que no vuelva a crecer: Panel de NVIDIA > Tamaño de caché del sombreador"},
 	{"Juegos Xbox / Microsoft Store", []string{`XboxGames`, `Program Files\WindowsApps`}, "Desinstalar desde la app Xbox / Configuración > Aplicaciones"},
 	{"Steam", []string{`Program Files (x86)\Steam\steamapps`}, "Revisa steamapps\\common y shadercache (restos de juegos)"},
 	{"Epic Games", []string{`Program Files\Epic Games`, `ProgramData\Epic`}, ""},
 
 	// Desarrollo
 	{"Android SDK / emuladores", []string{`Users\*\AppData\Local\Android\Sdk`, `Users\*\.android\avd`}, "Borra AVDs e imágenes de sistema que no uses"},
-	{"Caché npm / pnpm / yarn", []string{`Users\*\AppData\Local\npm-cache`, `Users\*\AppData\Local\pnpm`, `Users\*\AppData\Local\pnpm-cache`, `Users\*\AppData\Local\Yarn\Cache`}, "npm cache clean --force / pnpm store prune"},
-	{"Caché pip / conda", []string{`Users\*\AppData\Local\pip\cache`, `Users\*\anaconda3\pkgs`, `Users\*\miniconda3\pkgs`}, "pip cache purge / conda clean -a"},
+	{"Caché npm / pnpm / yarn", []string{`Users\*\AppData\Local\npm-cache`, `Users\*\AppData\Local\pnpm`, `Users\*\AppData\Local\pnpm-cache`, `Users\*\AppData\Local\Yarn\Cache`}, "npm y yarn: mapadisco -clean · pnpm: pnpm store prune"},
+	{"Caché pip / conda", []string{`Users\*\AppData\Local\pip\cache`, `Users\*\anaconda3\pkgs`, `Users\*\miniconda3\pkgs`}, "pip: mapadisco -clean · conda: conda clean -a"},
 	{"Paquetes NuGet / Gradle / Maven", []string{`Users\*\.nuget\packages`, `Users\*\.gradle`, `Users\*\.m2`}, ""},
 	{"Rust / Cargo", []string{`Users\*\.cargo`, `Users\*\.rustup`}, ""},
 	{"Composer", []string{`Users\*\AppData\Local\Composer`}, "composer clear-cache"},
 
 	// Usuario
-	{"Temporales de usuario", []string{`Users\*\AppData\Local\Temp`}, "Se pueden borrar (cierra programas antes)"},
+	{"Temporales de usuario", []string{`Users\*\AppData\Local\Temp`}, "Se libera con: mapadisco -clean"},
 	{"Navegadores (perfil + caché)", []string{`Users\*\AppData\Local\Google\Chrome\User Data`, `Users\*\AppData\Local\Microsoft\Edge\User Data`, `Users\*\AppData\Local\BraveSoftware`}, "Borrar datos de navegación > caché"},
 	{"OneDrive (copia local)", []string{`Users\*\OneDrive*`}, "Clic derecho > Liberar espacio"},
 	{"Descargas", []string{`Users\*\Downloads`}, "Revisa instaladores y .zip viejos"},

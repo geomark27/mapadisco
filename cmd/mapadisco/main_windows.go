@@ -7,8 +7,10 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
 
+	"mapadisco/internal/cleaner"
 	"mapadisco/internal/format"
 	"mapadisco/internal/hotspots"
 	"mapadisco/internal/installer"
@@ -37,6 +39,9 @@ type config struct {
 	install    bool
 	uninstall  bool
 	noInstall  bool
+	clean      bool
+	yes        bool
+	only       string
 }
 
 func main() { os.Exit(run()) }
@@ -85,6 +90,9 @@ func run() int {
 
 	out := report.New(os.Stdout, palette)
 	elevated := winapi.IsAdmin()
+	if cfg.clean {
+		return runClean(u, out, cfg.yes, cfg.only, elevated)
+	}
 	isDriveRoot := len(cfg.target) == 3 && cfg.target[1] == ':' && cfg.target[2] == '\\'
 
 	out.Header(version, cfg.target, cfg.workers, elevated)
@@ -124,7 +132,7 @@ func run() int {
 		abs, _ := filepath.Abs(cfg.csvPath)
 		out.Success("CSV exportado:", abs)
 	}
-	out.Note("Solo lectura: mapadisco no borra ni modifica nada.")
+	out.Note("Este análisis no borra nada. Para liberar espacio: mapadisco -clean")
 	return 0
 }
 
@@ -145,10 +153,21 @@ func parseFlags() (cfg config, code int, ok bool) {
 	flag.BoolVar(&cfg.install, "install", false, "instala mapadisco para tu usuario (sin preguntar) y sale")
 	flag.BoolVar(&cfg.uninstall, "uninstall", false, "desinstala mapadisco: lo quita del PATH y borra su carpeta")
 	flag.BoolVar(&cfg.noInstall, "no-install", false, "no ofrece instalarse (uso portable)")
+	flag.BoolVar(&cfg.clean, "clean", false, "libera espacio: muestra lo que se puede limpiar y pregunta qué borrar")
+	flag.BoolVar(&cfg.yes, "yes", false, "con -clean, limpia todas las categorías sin preguntar")
+	flag.StringVar(&cfg.only, "only", "", "con -clean, solo estas categorías: "+strings.Join(cleaner.IDs(), ","))
 	showVersion := flag.Bool("version", false, "muestra la versión")
 	flag.Usage = usage
 	flag.Parse()
 
+	if (cfg.yes || cfg.only != "") && !cfg.clean {
+		fmt.Fprintln(os.Stderr, "-yes y -only solo se usan junto con -clean: mapadisco -clean -yes")
+		return cfg, 2, false
+	}
+	if _, err := cleaner.Select(cfg.only); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return cfg, 2, false
+	}
 	if *showVersion {
 		fmt.Println("mapadisco", version)
 		return cfg, 0, false
@@ -180,7 +199,7 @@ func usage() {
 	fmt.Fprintf(w, "mapadisco %s — mapa de uso de disco para Windows (solo lectura)\n\n", version)
 	fmt.Fprintf(w, "Uso: mapadisco [opciones] [ruta]   (por defecto C:\\)\n\n")
 	flag.PrintDefaults()
-	fmt.Fprintf(w, "\nEjemplos:\n  mapadisco\n  mapadisco -admin\n  mapadisco -depth 4 -min 500MB C:\\Users\n  mapadisco -csv reporte.csv\n  mapadisco -uninstall\n")
+	fmt.Fprintf(w, "\nEjemplos:\n  mapadisco\n  mapadisco -admin\n  mapadisco -depth 4 -min 500MB C:\\Users\n  mapadisco -csv reporte.csv\n  mapadisco -clean\n  mapadisco -clean -admin\n  mapadisco -uninstall\n")
 }
 
 // resolveTarget normaliza la ruta a escanear ("C:" → "C:\") y valida que sea una carpeta.
