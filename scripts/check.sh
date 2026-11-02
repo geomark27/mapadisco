@@ -22,9 +22,9 @@ git rev-parse -q --verify origin/develop >/dev/null && base=origin/develop
 section "1. Rama"
 branch=$(git branch --show-current)
 case "$branch" in
-	main | develop | "") fail "estás en '${branch:-HEAD separado}': las actividades van en feature/<tema>, fix/<tema> o docs/<tema>" ;;
-	feature/* | fix/* | docs/*) ok "rama $branch" ;;
-	*) warn "rama '$branch' sin prefijo feature/, fix/ o docs/" ;;
+	main | develop | "") fail "estás en '${branch:-HEAD separado}': las actividades van en feat/<tema>, fix/<tema>, docs/<tema>…" ;;
+	feat/* | fix/* | docs/* | chore/* | refactor/* | perf/* | test/*) ok "rama $branch" ;;
+	*) warn "rama '$branch' sin prefijo de devlog (feat/, fix/, docs/, chore/, refactor/, perf/, test/)" ;;
 esac
 
 upstream=$(git rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null || true)
@@ -86,30 +86,41 @@ else
 	printf '  · sin %s (opcional, ignorado por git)\n' "$terms"
 fi
 
-section "4. Bitácora"
-added=$(git diff --name-only --diff-filter=A -M "$base" -- docs/bitacora/; git ls-files -o --exclude-standard docs/bitacora/)
-entry=$(echo "$added" | grep -E '^docs/bitacora/[0-9]{3}-[a-z0-9-]+\.md$' | sort -u)
-stray=$(echo "$added" | grep -E '\.md$' | grep -vE '^docs/bitacora/([0-9]{3}-[a-z0-9-]+|README)\.md$' || true)
-for f in $stray; do fail "$f: las entradas van en docs/bitacora/NNN-<tema>.md"; done
-if [ -z "$entry" ]; then
-	fail "falta la entrada docs/bitacora/NNN-<tema>.md de esta actividad"
+section "4. Bitácora (devlog)"
+devlog=.claude/skills/devlog/scripts
+logdir=$(sed -nE 's/^[[:space:]]*DEVLOG_DIR[[:space:]]*=[[:space:]]*"?([^"#[:space:]]+)"?.*/\1/p' .devlog.conf 2>/dev/null | tail -n1)
+if [ ! -x "$devlog/verify.sh" ] || [ -z "$logdir" ]; then
+	fail "falta devlog (.devlog.conf y $devlog/)"
 else
-	for e in $entry; do
-		ok "entrada $e"
-		rel=${e#docs/bitacora/}
-		grep -qF "(./$rel)" docs/bitacora/README.md && ok "$rel está en el índice" || fail "$rel no está en docs/bitacora/README.md"
-		for s in '## 1. Solicitud' '## 2. Motivación' '## 3. Diseño técnico' '## 4. Archivos' '## 5. Cómo verificar'; do
-			grep -qF "$s" "$e" || fail "$rel: falta la sección «${s#\#\# }»"
+	changed_log=$( (git diff --name-only "$base" -- "$logdir"; git ls-files -o --exclude-standard "$logdir") | sort -u)
+	card=$(echo "$changed_log" | grep -E "^$logdir/releases/v[0-9]+\.[0-9]+\.[0-9]+\.md$" || true)
+	if [[ "$branch" == chore/release-* ]]; then
+		# Cierra una versión: lleva la ficha nueva en lugar de una entrada propia.
+		if [ -n "$card" ]; then ok "cierre de versión: $card"; else fail "rama de cierre sin ficha nueva: corre make release-prep"; fi
+		grep -qx 'version: unreleased' "$logdir"/entries/*.md 2>/dev/null &&
+			warn "quedan entradas «unreleased»: ¿se fusionó algo después de make release-prep?"
+	else
+		if out=$("$devlog/verify.sh" 2>&1); then
+			ok "$(echo "$out" | tail -n1 | sed 's/^✓ //')"
+		else
+			fail "la entrada de la rama no es válida (make bitacora title=\"…\" para crearla):"
+			echo "$out" | sed 's/^/      /'
+		fi
+		if echo "$changed_log" | grep -q "^$logdir/entries/"; then
+			ok "la entrada viaja en este cambio"
+		else
+			fail "la entrada de la rama no está entre los cambios"
+		fi
+		for f in $(git diff --name-only --diff-filter=M "$base" -- "$logdir/entries/"); do
+			v=$(grep -m1 '^version:' "$f" || true)
+			[ "$v" = "version: unreleased" ] || warn "$f ya se publicó ($v): no se reescribe, salvo erratas"
 		done
-	done
+	fi
 fi
-for m in $(git diff --name-only --diff-filter=M "$base" -- 'docs/bitacora/[0-9]*.md'); do
-	warn "$m ya estaba en $base: solo se permiten notas aclaratorias"
-done
 
 section "5. Guía de usuario"
 changed=$( (git diff --name-only "$base"; git ls-files -o --exclude-standard) | sort -u)
-visible=$(echo "$changed" | grep -E '^(cmd/|internal/report/|internal/hotspots/catalog\.go|installer/|scripts/package\.sh)' | grep -v '_test\.go$' || true)
+visible=$(echo "$changed" | grep -E '^(cmd/|internal/report/|internal/hotspots/catalog\.go|internal/installer/|scripts/install\.ps1)' | grep -v '_test\.go$' || true)
 if [ -z "$visible" ]; then
 	ok "sin cambios en lo que ve el usuario"
 elif echo "$changed" | grep -qx 'docs/guia-de-usuario.md'; then

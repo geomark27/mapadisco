@@ -6,11 +6,17 @@ Mapa de uso de disco para Windows desde la terminal. **Solo lectura**: no borra 
 
 ## Instalar
 
-1. Descarga `mapadisco-vX.Y.Z-windows-amd64.zip` (y `checksums.txt` para verificarlo) desde **Releases** en GitHub, y descomprímelo.
-2. Doble clic en `instalar.cmd`. Se instala para tu usuario en `%LOCALAPPDATA%\Programs\mapadisco` y se agrega al PATH; no requiere Administrador.
-3. Abre una **nueva** terminal y ejecuta `mapadisco`.
+En PowerShell:
 
-Desinstalar: `desinstalar.cmd`. También puedes usar `mapadisco.exe` directamente sin instalar.
+```powershell
+irm https://raw.githubusercontent.com/geomark27/mapadisco/main/scripts/install.ps1 | iex
+```
+
+Descarga `mapadisco-windows-amd64.exe` del último release, verifica su SHA-256 contra `checksums.txt` y lo instala para
+tu usuario en `%LOCALAPPDATA%\Programs\mapadisco`, agregando esa carpeta al PATH (sin permisos de Administrador).
+
+También puedes descargar el `.exe` desde **Releases** y abrirlo: la primera vez ofrece instalarse. Abre una terminal
+nueva y escribe `mapadisco`. Para desinstalar: `mapadisco -uninstall`.
 
 ## Uso
 
@@ -48,11 +54,11 @@ make                     # lista todos los atajos
 make test                # pruebas (portables)
 make lint                # gofmt + vet para Linux y Windows
 make run args="-depth 4" # compila el .exe y lo ejecuta en Windows desde WSL
-make package             # zip instalable en dist/
+make package             # el .exe del release en dist/
 make check               # verificaciones antes del commit
 ```
 
 - Estructura y cómo extender el programa: [docs/arquitectura.md](docs/arquitectura.md).
-- Ramas (`main` ← `develop` ← `feature/<tema>`), commits y PR: [docs/flujo-de-trabajo.md](docs/flujo-de-trabajo.md).
+- Ramas (`main` ← `develop` ← `feat/<tema>`), commits y PR: [docs/flujo-de-trabajo.md](docs/flujo-de-trabajo.md).
 - Versionado (tag de git, SemVer) y publicación: [docs/release.md](docs/release.md).
-- Historia de cada cambio: [docs/bitacora/](docs/bitacora/README.md).
+- Historia de cada cambio (devlog): [docs/bitacora/](docs/bitacora/README.md).

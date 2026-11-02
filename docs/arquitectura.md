@@ -12,17 +12,18 @@ mapadisco/
 │   ├── scanner/            Modelo del árbol (Node, Result) + motor de escaneo paralelo
 │   ├── hotspots/           Catálogo de "sospechosos habituales" + evaluación contra el árbol
 │   ├── report/             Presentación en terminal y exportación CSV (escribe a io.Writer)
+│   ├── installer/          Autoinstalación: copia a %LOCALAPPDATA%\Programs\mapadisco y PATH del usuario
 │   └── format/             Tamaños, porcentajes, barras, miles; sin dependencias
-├── installer/              install.ps1 + instalar.cmd / desinstalar.cmd
-├── scripts/                package.sh (zip), check.sh (antes del commit), merge/promote/release.sh
+├── scripts/                install.ps1 (instalación de una línea), check.sh, version.sh, merge/promote/release(-prep).sh
+├── .claude/skills/devlog/  Bitácora (devlog), configurada en .devlog.conf
 ├── Makefile                Atajos del día a día: make help
 ├── CLAUDE.md               Reglas del proyecto para Claude Code
 └── docs/
-    ├── guia-de-usuario.md    Guía para quien usa la herramienta (va dentro del zip)
+    ├── guia-de-usuario.md    Guía para quien usa la herramienta
     ├── arquitectura.md       Este documento
     ├── flujo-de-trabajo.md   Ramas, actividades, commits y PR
     ├── release.md            Versionado y publicación
-    └── bitacora/             Una entrada por actividad
+    └── bitacora/             devlog: entries/ (una por rama) y releases/ (una por versión)
 ```
 
 No hay archivo `VERSION`: la versión es el tag de git (`vX.Y.Z`) y se inyecta al compilar
@@ -31,15 +32,33 @@ No hay archivo `VERSION`: la versión es el tag de git (`vX.Y.Z`) y se inyecta a
 ## Dependencias entre paquetes
 
 ```
-cmd/mapadisco ──► report ──► scanner ──► winapi
-      │             │           ▲
-      │             └──► format │
-      └──► hotspots ────────────┘ (y winapi)
+cmd/mapadisco ──► report ──► scanner ──► winapi ──► golang.org/x/sys (registro)
+      │             │           ▲          ▲
+      │             └──► format │          │
+      ├──► hotspots ────────────┘ (y winapi)
+      └──► installer ──────────────────────┘
 ```
 
-- `winapi` no depende de nadie del proyecto. Nada fuera de él usa `syscall`.
-- `format`, el modelo de `scanner` (`node.go`), el catálogo de `hotspots` y todo `report`
-  son **portables** y tienen pruebas que corren en Linux/WSL.
+- `winapi` no depende de nadie del proyecto. Nada fuera de él usa `syscall` ni el registro.
+- `format`, el modelo de `scanner` (`node.go`), el catálogo de `hotspots`, todo `report` y la lógica de
+  rutas de `installer` son **portables** y tienen pruebas que corren en Linux/WSL.
+
+## Instalación (`internal/installer`)
+
+El mismo `.exe` del release se instala solo, como draco:
+
+1. Al arrancar borra el `mapadisco.exe.old` que pudo dejar una reinstalación.
+2. Si no corre desde `%LOCALAPPDATA%\Programs\mapadisco` y stdin es una consola, pregunta si instalarse
+   (`-no-install` lo evita; `-install` instala sin preguntar). Sin argumentos (doble clic o el `.exe` recién
+   descargado) termina tras instalar; con argumentos, sigue con el análisis.
+3. `Install` copia el ejecutable a un temporal en esa carpeta, aparta el instalado como `.old` (Windows deja
+   renombrar un `.exe` en uso pero no sobrescribirlo) y renombra el temporal. Luego agrega la carpeta al PATH del
+   usuario en `HKCU\Environment`, conservando el tipo `REG_EXPAND_SZ`, y avisa con `WM_SETTINGCHANGE` para que
+   las terminales nuevas lo vean sin cerrar sesión.
+4. `Uninstall` quita la entrada del PATH (dejándolo idéntico a como estaba antes de instalar) y borra la carpeta;
+   si el que corre es el instalado, el borrado lo hace un `cmd.exe` oculto segundos después de salir.
+5. Con doble clic la consola es propia del proceso (`GetConsoleProcessList` = 1): se espera Enter antes de
+   cerrar la ventana.
 - El código exclusivo de Windows lleva el sufijo `_windows.go`, que Go aplica como
   restricción de compilación automáticamente.
 
