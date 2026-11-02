@@ -14,6 +14,7 @@ mapadisco/
 │   ├── report/             Presentación en terminal y exportación CSV (escribe a io.Writer)
 │   ├── installer/          Autoinstalación: copia a %LOCALAPPDATA%\Programs\mapadisco y PATH del usuario
 │   ├── cleaner/            Limpieza (-clean): catálogo de categorías, medir, borrar contenido, guías manuales
+│   ├── updater/            Actualización (-update): última versión en GitHub, descarga verificada, reemplazo
 │   └── format/             Tamaños, porcentajes, barras, miles; sin dependencias
 ├── scripts/                install.ps1 (instalación de una línea), check.sh, version.sh, merge/promote/release(-prep).sh
 ├── .claude/skills/devlog/  Bitácora (devlog), configurada en .devlog.conf
@@ -38,7 +39,8 @@ cmd/mapadisco ──► report ──► scanner ──► winapi ──► gola
       │             └──► format │          │
       ├──► hotspots ────────────┘ (y winapi)
       ├──► installer ──────────────────────┘
-      └──► cleaner   (portable; cmd le pasa winapi.IsInUse y vacía la Papelera con winapi)
+      ├──► cleaner   (portable; cmd le pasa winapi.IsInUse y vacía la Papelera con winapi)
+      └──► updater   (portable; red solo con -update)
 ```
 
 - `winapi` no depende de nadie del proyecto. Nada fuera de él usa `syscall` ni el registro.
@@ -59,6 +61,19 @@ cmd/mapadisco ──► report ──► scanner ──► winapi ──► gola
 4. La Papelera se vacía con `SHEmptyRecycleBinW` (sin diálogos).
 5. `cmd` informa por categoría y, si Windows se opuso, el motivo, qué hacer, la ruta manual y el `explorer "…"` de la
    carpeta; luego el espacio libre real antes y después (`GetDiskFreeSpaceExW`) y las guías manuales con su tamaño.
+
+## Actualización (`internal/updater`, `-update`)
+
+1. `Latest` consulta `api.github.com/repos/<repo>/releases/latest` (sin pre-releases); un 404 es `ErrNoReleases`.
+2. `IsNewer` compara `vMAJOR.MINOR.PATCH`; una compilación de desarrollo (`dev`, `abc1234-dirty`) nunca es más nueva
+   ni más vieja: no se actualiza sola.
+3. `Fetch` baja `checksums.txt` y `mapadisco-windows-amd64.exe` del release (con un límite de tamaño) y devuelve el
+   ejecutable solo si su SHA-256 coincide.
+4. `Replace` escribe la versión nueva junto al ejecutable en uso, aparta el actual como `.old` (Windows deja
+   renombrar un `.exe` en uso pero no sobrescribirlo) y renombra; si algo falla, deja todo como estaba.
+   `installer.CleanOld` borra el `.old` al arrancar la versión nueva.
+
+Mismo diseño que `draco update`, sin su aviso automático de versión nueva: mapadisco solo usa la red cuando se pide.
 
 ## Instalación (`internal/installer`)
 

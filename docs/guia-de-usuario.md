@@ -48,7 +48,8 @@ cuánto ocupa cada uno y preguntarte qué limpiar. Lo que no se puede borrar con
 - **Solo `mapadisco -clean` borra**, y solo las categorías que aparecen en su lista, después de preguntarte (o con `-yes`).
   Nunca toca tus documentos, fotos, descargas, juegos ni archivos del sistema.
 - Fuera de eso, solo escribe su propia instalación (si aceptas instalarlo) y el CSV que pidas con `-csv`.
-- No se conecta a internet ni envía información a ningún lado.
+- No se conecta a internet ni envía información a ningún lado. La única excepción es `mapadisco -update`, cuando tú lo
+  ejecutas: consulta en GitHub cuál es la última versión y la descarga.
 - No corre en segundo plano ni queda residente: solo funciona mientras lo ejecutas.
 
 ### Por qué es rápido
@@ -152,9 +153,32 @@ terminal ahí. Sin instalar, el comando `mapadisco` no existe en otras carpetas.
 
 ### Actualizar a una versión nueva
 
-Repite la instalación con la versión nueva: la línea de PowerShell de la opción A, o descarga el `.exe` nuevo y
-ábrelo. Reemplaza el ejecutable anterior aunque mapadisco esté abierto en otra ventana, y el `PATH` no se duplica.
-Confírmalo con `mapadisco -version`.
+```
+mapadisco -update            # descarga e instala la última versión
+mapadisco -update -check     # solo consulta si hay una versión nueva
+```
+
+```
+  Versión actual: v0.3.0
+  Nueva versión: v0.4.0
+    Novedades: https://github.com/geomark27/mapadisco/releases/tag/v0.4.0
+
+  [1/2] Descargando v0.4.0 y verificando su SHA-256…
+  [2/2] Reemplazando C:\Users\Usuario\AppData\Local\Programs\mapadisco\mapadisco.exe…
+  ✓ Actualizado a v0.4.0
+```
+
+- Consulta la última versión publicada en GitHub y, si es más nueva que la tuya, descarga el `.exe` y **solo lo
+  instala si su SHA-256 coincide** con el `checksums.txt` de esa versión. Si no coincide, no cambia nada.
+- Reemplaza el `mapadisco.exe` que estás usando, aunque esté abierto en otra ventana. Para comprobarlo, ejecuta
+  `mapadisco -version`.
+- Si ya tienes la última versión, solo lo dice. Una versión de desarrollo (compilada a mano) no se actualiza sola.
+- Es el único momento en que mapadisco se conecta a internet, y solo cuando tú lo ejecutas: no busca versiones nuevas
+  por su cuenta.
+
+Si tu versión no conoce `-update` (responde *"flag provided but not defined: -update"*), es anterior a esta función:
+actualiza **esa vez** repitiendo la instalación (la línea de PowerShell de la opción A, o descarga el `.exe` nuevo y
+ábrelo). Desde entonces basta con `mapadisco -update`.
 
 ### Si Windows muestra una advertencia
 
@@ -332,6 +356,8 @@ mapadisco [opciones] [ruta]
 | `-install` | — | Instala mapadisco para tu usuario sin preguntar y sale. Ver [sección 3](#3-instalación). |
 | `-uninstall` | — | Desinstala mapadisco: lo quita del `PATH` y borra su carpeta. Ver [sección 13](#13-desinstalación). |
 | `-no-install` | desactivado | No ofrece instalarse; para usarlo portable sin que pregunte cada vez. |
+| `-update` | — | Actualiza a la última versión publicada, verificando su SHA-256. Ver [Actualizar](#actualizar-a-una-versión-nueva). |
+| `-check` | desactivado | Con `-update`: solo consulta si hay una versión nueva, sin instalarla. |
 | `-clean` | — | Libera espacio: mide lo que se puede limpiar, pregunta qué borrar y lo borra. Ver [sección 10](#10-liberar-espacio). |
 | `-yes` | desactivado | Con `-clean`: limpia todas las categorías sin preguntar. |
 | `-only LISTA` | todas | Con `-clean`: solo esas categorías, separadas por coma: `shaders`, `temp`, `temp-sistema`, `papelera`, `volcados`, `dev`. |
@@ -347,8 +373,8 @@ Las opciones también se pueden escribir con dos guiones (`--depth 4`) y con `=`
 | Código | Significado |
 |---|---|
 | `0` | Terminó correctamente. |
-| `1` | Error al exportar el CSV, al pedir permisos de Administrador, o al instalar o desinstalar. |
-| `2` | Opción inválida (p. ej. `-min mucho`, una categoría desconocida en `-only`, o `-yes` sin `-clean`) o la ruta no existe. |
+| `1` | Error al exportar el CSV, al pedir permisos de Administrador, al instalar o desinstalar, o al actualizar (sin conexión, SHA-256 distinto…). |
+| `2` | Opción inválida (p. ej. `-min mucho`, una categoría desconocida en `-only`, `-yes` sin `-clean` o `-check` sin `-update`) o la ruta no existe. |
 
 Con `-clean`, que Windows no deje borrar algunos archivos **no** es un error: se informa y el código sigue siendo `0`.
 
@@ -619,6 +645,9 @@ habituales solo aparecen al analizar la raíz de una unidad con letra.
 | `no existe o no es una carpeta` | Revisa la ruta. Si tiene espacios, ponla entre comillas: `mapadisco "D:\Mis juegos"`. |
 | Una opción no hace efecto | Ponla **antes** de la ruta (ver [sección 6](#6-opciones)). |
 | Muy lento en un disco mecánico | Usa `-workers 4`. |
+| `-update` dice *"No se pudo consultar la última versión"* | Revisa la conexión a internet. En redes con proxy, GitHub puede estar bloqueado: consulta con el área de Tecnología o actualiza descargando el `.exe` a mano (opción B de la [sección 3](#3-instalación)). |
+| *"flag provided but not defined: -update"* | Tu versión es anterior a `-update`: actualiza esa vez reinstalando (ver [Actualizar](#actualizar-a-una-versión-nueva)). |
+| `-update` dice *"el SHA-256 … no coincide"* | La descarga llegó incompleta o alterada y no se instaló nada. Vuelve a intentarlo; si se repite, avisa al área de Tecnología. |
 | `-clean` dice *"Windows no dejó borrar…"* | Ver [Si Windows no deja borrar algo](#si-windows-no-deja-borrar-algo). |
 | `-clean` no muestra *Temporales de Windows* o los deja a medias | Requieren Administrador: `mapadisco -clean -admin`. |
 | El antivirus lo bloquea | Ver [Si Windows muestra una advertencia](#si-windows-muestra-una-advertencia). |

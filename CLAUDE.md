@@ -60,7 +60,7 @@ main ── develop ── feat/<tema> | fix/<tema> | docs/<tema> | chore/<tema>
 
 - Solo `internal/winapi` llama a Win32 / `syscall`. El código exclusivo de Windows va en archivos `_windows.go`.
 - `format`, el modelo de `scanner` (`node.go`), el catálogo de `hotspots`, `report`, la lógica de rutas de
-  `installer` y todo `cleaner` son portables y llevan pruebas que corren en Linux. `report` escribe en un `io.Writer`, nunca directo en la consola.
+  `installer`, todo `cleaner` y todo `updater` son portables y llevan pruebas que corren en Linux. `report` escribe en un `io.Writer`, nunca directo en la consola.
 - El análisis no escribe en el disco. Lo único que borra es `-clean`, y solo lo de `cleaner.Auto` (cachés y temporales
   que se regeneran, Papelera, volcados), después de mostrarlo y preguntar (o con `-yes`). Nunca sigue enlaces ni
   junctions, nunca borra la carpeta raíz de una categoría ni rutas relativas o raíces de unidad (hay pruebas que lo
@@ -71,6 +71,8 @@ main ── develop ── feat/<tema> | fix/<tema> | docs/<tema> | chore/<tema>
   instalar y desinstalar deja el PATH idéntico (hay una prueba que lo exige).
 - Datos de prueba y ejemplos de la documentación: ficticios (`C:\Users\Usuario`), nunca rutas, nombres ni datos de un
   equipo real. Sin correos, tokens ni secretos en el repo (`make check` los busca).
+- El programa solo se conecta a internet con `-update`, cuando el usuario lo ejecuta (`internal/updater`): sin avisos
+  automáticos de versión nueva ni telemetría. Lo descargado solo se instala si su SHA-256 coincide con `checksums.txt`.
 - Dependencias: solo `golang.org/x/sys` (registro de Windows, en `internal/winapi`). Cualquier otra se justifica antes.
 - Comentarios y mensajes en español.
 

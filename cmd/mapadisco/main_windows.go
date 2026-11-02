@@ -42,6 +42,8 @@ type config struct {
 	clean      bool
 	yes        bool
 	only       string
+	update     bool
+	check      bool
 }
 
 func main() { os.Exit(run()) }
@@ -68,6 +70,8 @@ func run() int {
 	palette := report.NewPalette(colors)
 	u := ui{palette}
 	switch {
+	case cfg.update:
+		return runUpdate(u, cfg.check)
 	case cfg.uninstall:
 		return runUninstall(u)
 	case cfg.install:
@@ -153,6 +157,8 @@ func parseFlags() (cfg config, code int, ok bool) {
 	flag.BoolVar(&cfg.install, "install", false, "instala mapadisco para tu usuario (sin preguntar) y sale")
 	flag.BoolVar(&cfg.uninstall, "uninstall", false, "desinstala mapadisco: lo quita del PATH y borra su carpeta")
 	flag.BoolVar(&cfg.noInstall, "no-install", false, "no ofrece instalarse (uso portable)")
+	flag.BoolVar(&cfg.update, "update", false, "actualiza mapadisco a la última versión publicada (verifica su SHA-256)")
+	flag.BoolVar(&cfg.check, "check", false, "con -update, solo consulta si hay una versión nueva")
 	flag.BoolVar(&cfg.clean, "clean", false, "libera espacio: muestra lo que se puede limpiar y pregunta qué borrar")
 	flag.BoolVar(&cfg.yes, "yes", false, "con -clean, limpia todas las categorías sin preguntar")
 	flag.StringVar(&cfg.only, "only", "", "con -clean, solo estas categorías: "+strings.Join(cleaner.IDs(), ","))
@@ -160,6 +166,10 @@ func parseFlags() (cfg config, code int, ok bool) {
 	flag.Usage = usage
 	flag.Parse()
 
+	if cfg.check && !cfg.update {
+		fmt.Fprintln(os.Stderr, "-check solo se usa junto con -update: mapadisco -update -check")
+		return cfg, 2, false
+	}
 	if (cfg.yes || cfg.only != "") && !cfg.clean {
 		fmt.Fprintln(os.Stderr, "-yes y -only solo se usan junto con -clean: mapadisco -clean -yes")
 		return cfg, 2, false
@@ -199,7 +209,7 @@ func usage() {
 	fmt.Fprintf(w, "mapadisco %s — mapa de uso de disco para Windows (solo lectura)\n\n", version)
 	fmt.Fprintf(w, "Uso: mapadisco [opciones] [ruta]   (por defecto C:\\)\n\n")
 	flag.PrintDefaults()
-	fmt.Fprintf(w, "\nEjemplos:\n  mapadisco\n  mapadisco -admin\n  mapadisco -depth 4 -min 500MB C:\\Users\n  mapadisco -csv reporte.csv\n  mapadisco -clean\n  mapadisco -clean -admin\n  mapadisco -uninstall\n")
+	fmt.Fprintf(w, "\nEjemplos:\n  mapadisco\n  mapadisco -admin\n  mapadisco -depth 4 -min 500MB C:\\Users\n  mapadisco -csv reporte.csv\n  mapadisco -clean\n  mapadisco -clean -admin\n  mapadisco -update\n  mapadisco -uninstall\n")
 }
 
 // resolveTarget normaliza la ruta a escanear ("C:" → "C:\") y valida que sea una carpeta.
