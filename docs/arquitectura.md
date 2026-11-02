@@ -13,6 +13,7 @@ mapadisco/
 │   ├── hotspots/           Catálogo de "sospechosos habituales" + evaluación contra el árbol
 │   ├── report/             Presentación en terminal y exportación CSV (escribe a io.Writer)
 │   ├── installer/          Autoinstalación: copia a %LOCALAPPDATA%\Programs\mapadisco y PATH del usuario
+│   ├── cleaner/            Limpieza (-clean): catálogo de categorías, medir, borrar contenido, guías manuales
 │   └── format/             Tamaños, porcentajes, barras, miles; sin dependencias
 ├── scripts/                install.ps1 (instalación de una línea), check.sh, version.sh, merge/promote/release(-prep).sh
 ├── .claude/skills/devlog/  Bitácora (devlog), configurada en .devlog.conf
@@ -36,12 +37,28 @@ cmd/mapadisco ──► report ──► scanner ──► winapi ──► gola
       │             │           ▲          ▲
       │             └──► format │          │
       ├──► hotspots ────────────┘ (y winapi)
-      └──► installer ──────────────────────┘
+      ├──► installer ──────────────────────┘
+      └──► cleaner   (portable; cmd le pasa winapi.IsInUse y vacía la Papelera con winapi)
 ```
 
 - `winapi` no depende de nadie del proyecto. Nada fuera de él usa `syscall` ni el registro.
 - `format`, el modelo de `scanner` (`node.go`), el catálogo de `hotspots`, todo `report` y la lógica de
   rutas de `installer` son **portables** y tienen pruebas que corren en Linux/WSL.
+
+## Limpieza (`internal/cleaner`, `-clean`)
+
+1. `cleaner.Auto` es el catálogo de lo que se puede borrar; `cleaner.Manual`, lo que solo se explica. Las rutas usan
+   variables de entorno (`$LOCALAPPDATA`, `$TEMP`, `${ProgramFiles(x86)}`…) y comodines; `Resolve` descarta una
+   ruta si su variable está vacía, para no terminar nunca en una ruta relativa o en la raíz.
+2. `cmd` mide todas las categorías en paralelo (`Measure`; la Papelera con `SHQueryRecycleBinW`), las lista y pregunta
+   (`ParseSelection`), o toma todas con `-yes` y un subconjunto con `-only`.
+3. `Clean` borra el **contenido** de cada carpeta (o el archivo indicado), recursivo, sin seguir enlaces ni junctions
+   (`ModeSymlink`/`ModeIrregular`) y sin borrar la carpeta raíz. Quita el atributo de solo lectura si hace falta.
+   Ante cada error sigue adelante y lo clasifica: en uso (`ERROR_SHARING_VIOLATION`, que `cmd` reconoce con
+   `winapi.IsInUse`), sin permiso, otro; guarda hasta 3 ejemplos. `checkSafe` rechaza rutas relativas y raíces de unidad.
+4. La Papelera se vacía con `SHEmptyRecycleBinW` (sin diálogos).
+5. `cmd` informa por categoría y, si Windows se opuso, el motivo, qué hacer, la ruta manual y el `explorer "…"` de la
+   carpeta; luego el espacio libre real antes y después (`GetDiskFreeSpaceExW`) y las guías manuales con su tamaño.
 
 ## Instalación (`internal/installer`)
 
@@ -80,6 +97,7 @@ El mismo `.exe` del release se instala solo, como draco:
 
 | Quiero… | Dónde |
 |---|---|
+| Agregar una categoría de limpieza | Una entrada en `cleaner.Auto` (o en `cleaner.Manual` si no debe borrarse sola). La prueba del catálogo exige rutas con variables de entorno. |
 | Agregar un sospechoso habitual | Una entrada en `hotspots.Catalog` (`internal/hotspots/catalog.go`). La prueba del catálogo valida el formato. |
 | Agregar una sección al reporte | Un método nuevo en `report.Printer` y su llamada en `cmd/mapadisco/main_windows.go`. |
 | Nuevo formato de exportación (JSON, HTML…) | Un archivo nuevo en `internal/report/` con una función `WriteXxx(io.Writer, *scanner.Node)`, igual que `WriteCSV`. |

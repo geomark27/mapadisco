@@ -120,7 +120,7 @@ fi
 
 section "5. Guía de usuario"
 changed=$( (git diff --name-only "$base"; git ls-files -o --exclude-standard) | sort -u)
-visible=$(echo "$changed" | grep -E '^(cmd/|internal/report/|internal/hotspots/catalog\.go|internal/installer/|scripts/install\.ps1)' | grep -v '_test\.go$' || true)
+visible=$(echo "$changed" | grep -E '^(cmd/|internal/report/|internal/hotspots/catalog\.go|internal/cleaner/catalog\.go|internal/installer/|scripts/install\.ps1)' | grep -v '_test\.go$' || true)
 if [ -z "$visible" ]; then
 	ok "sin cambios en lo que ve el usuario"
 elif echo "$changed" | grep -qx 'docs/guia-de-usuario.md'; then
