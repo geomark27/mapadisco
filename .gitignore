@@ -1,0 +1,7 @@
+# Artefactos de compilación
+/dist/
+*.exe
+*.test
+*.out
+# Reportes generados al probar
+*.csv
