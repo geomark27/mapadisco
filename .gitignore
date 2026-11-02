@@ -5,3 +5,6 @@
 *.out
 # Reportes generados al probar
 *.csv
+# Locales, no se versionan
+CLAUDE.local.md
+.claude/terminos-privados.txt

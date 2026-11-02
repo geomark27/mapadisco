@@ -14,10 +14,19 @@ mapadisco/
 │   ├── report/             Presentación en terminal y exportación CSV (escribe a io.Writer)
 │   └── format/             Tamaños, porcentajes, barras, miles; sin dependencias
 ├── installer/              install.ps1 + instalar.cmd / desinstalar.cmd
-├── scripts/build.sh        Pruebas, vet, compilación y empaquetado en dist/
-├── docs/                   Documentación técnica
-└── VERSION                 Versión que se inyecta al compilar (-X main.version)
+├── scripts/                package.sh (zip), check.sh (antes del commit), merge/promote/release.sh
+├── Makefile                Atajos del día a día: make help
+├── CLAUDE.md               Reglas del proyecto para Claude Code
+└── docs/
+    ├── guia-de-usuario.md    Guía para quien usa la herramienta (va dentro del zip)
+    ├── arquitectura.md       Este documento
+    ├── flujo-de-trabajo.md   Ramas, actividades, commits y PR
+    ├── release.md            Versionado y publicación
+    └── bitacora/             Una entrada por actividad
 ```
+
+No hay archivo `VERSION`: la versión es el tag de git (`vX.Y.Z`) y se inyecta al compilar
+(ver [release.md](release.md)).
 
 ## Dependencias entre paquetes
 
