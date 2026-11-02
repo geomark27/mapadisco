@@ -1,6 +1,6 @@
 # Guía de usuario de mapadisco
 
-**Versión 1.1.0** · Windows 10 / 11 (64 bits)
+Windows 10 / 11 (64 bits) · Para saber qué versión tienes: `mapadisco -version`
 
 ---
 
@@ -62,10 +62,27 @@ tarda del orden de 30 segundos la primera vez y 3 a 5 segundos las siguientes (W
 
 ## 3. Instalación
 
+### Descargar
+
+Las versiones publicadas están en la página **Releases** del repositorio en GitHub
+(`https://github.com/geomark27/mapadisco/releases`). De la última versión descarga:
+
+- `mapadisco-vX.Y.Z-windows-amd64.zip`: el programa y su instalador (`vX.Y.Z` es el número de versión);
+- `checksums.txt`: la huella SHA-256 de cada zip, para comprobar que la descarga está completa y no fue alterada.
+
+**Verificar la descarga (recomendado).** En PowerShell, en la carpeta de descargas:
+
+```powershell
+Get-FileHash .\mapadisco-vX.Y.Z-windows-amd64.zip
+```
+
+El valor `Hash` debe ser igual al que aparece junto a ese nombre en `checksums.txt` (mayúsculas y minúsculas dan igual).
+Si no coincide, no lo instales: vuelve a descargarlo.
+
 ### Opción A — Instalador (recomendada)
 
-1. Descomprime `mapadisco-1.1.0-windows-x64.zip` en cualquier carpeta (por ejemplo, Descargas).
-   Dentro encontrarás:
+1. Descomprime el zip en cualquier carpeta (por ejemplo, Descargas). Se crea la carpeta
+   `mapadisco-vX.Y.Z-windows-amd64` con:
 
    ```
    mapadisco.exe          el programa
@@ -91,7 +108,7 @@ tarda del orden de 30 segundos la primera vez y 3 a 5 segundos las siguientes (W
    mapadisco -version
    ```
 
-   Debe responder `mapadisco 1.1.0`.
+   Debe responder con la versión que descargaste, por ejemplo `mapadisco v1.2.0`.
 
 > La instalación es solo para tu usuario: no toca archivos del sistema ni pide permisos de Administrador.
 > Después de instalar puedes borrar el zip y la carpeta descomprimida.
@@ -116,7 +133,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
 
 ### Actualizar a una versión nueva
 
-Descomprime el zip nuevo y vuelve a ejecutar `instalar.cmd`. Reemplaza el ejecutable anterior; el `PATH` no se duplica.
+Descarga el zip de la versión nueva desde *Releases*, descomprímelo y vuelve a ejecutar `instalar.cmd`.
+Reemplaza el ejecutable anterior; el `PATH` no se duplica. Confírmalo con `mapadisco -version`.
 
 ### Si Windows muestra una advertencia
 
@@ -147,7 +165,7 @@ Al terminar aparece el reporte completo. Si la salida es larga, sube con la rued
 ### Ejemplo de reporte (datos ficticios)
 
 ```
-mapadisco 1.1.0  ·  analizando C:\  ·  24 hilos  ·  usuario normal
+mapadisco v1.2.0  ·  analizando C:\  ·  24 hilos  ·  usuario normal
 Escaneo completo en 4.2s: 650.120 archivos, 140.300 carpetas, 60 enlaces/junctions omitidos (evita contar doble)
 
 ── RESUMEN DEL DISCO C:\ ──────────────────────────────────────────────
