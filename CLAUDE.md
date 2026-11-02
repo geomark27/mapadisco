@@ -60,11 +60,14 @@ main ── develop ── feat/<tema> | fix/<tema> | docs/<tema> | chore/<tema>
 
 - Solo `internal/winapi` llama a Win32 / `syscall`. El código exclusivo de Windows va en archivos `_windows.go`.
 - `format`, el modelo de `scanner` (`node.go`), el catálogo de `hotspots`, `report`, la lógica de rutas de
-  `installer`, todo `cleaner` y todo `updater` son portables y llevan pruebas que corren en Linux. `report` escribe en un `io.Writer`, nunca directo en la consola.
+  `installer`, todo `cleaner`, todo `updater` y todo `memory` son portables y llevan pruebas que corren en Linux. `report` escribe en un `io.Writer`, nunca directo en la consola.
 - El análisis no escribe en el disco. Lo único que borra es `-clean`, y solo lo de `cleaner.Auto` (cachés y temporales
   que se regeneran, Papelera, volcados), después de mostrarlo y preguntar (o con `-yes`). Nunca sigue enlaces ni
   junctions, nunca borra la carpeta raíz de una categoría ni rutas relativas o raíces de unidad (hay pruebas que lo
   exigen). Lo demás va a `cleaner.Manual` como guía: no se borra. Además escribe su propia instalación y el CSV.
+- `-ram` solo lee y sugiere. Nunca vaciar memoria de procesos ni la caché («liberadores de RAM»): empeora el
+  rendimiento. Su única escritura es `.wslconfig` con `-ram -wslconfig`, mostrando el cambio, con confirmación, copia
+  `.bak` y conservando el resto del archivo; nunca ejecuta `wsl --shutdown` por su cuenta.
 - Al ampliar `cleaner.Auto`: solo cosas que se regeneran solas o que el usuario ya descartó; nunca datos del usuario
   ni del sistema que tengan herramienta oficial (Windows Update, WinSxS): esos van a `cleaner.Manual`.
 - Los cambios al PATH del usuario conservan el tipo del valor (`REG_EXPAND_SZ`) y el resto de entradas tal cual:

@@ -16,9 +16,10 @@ Windows 10 / 11 (64 bits) · Para saber qué versión tienes: `mapadisco -versio
 8. [Exportar a Excel (CSV)](#8-exportar-a-excel-csv)
 9. [Modo Administrador](#9-modo-administrador)
 10. [Liberar espacio](#10-liberar-espacio)
-11. [Preguntas frecuentes](#11-preguntas-frecuentes)
-12. [Solución de problemas](#12-solución-de-problemas)
-13. [Desinstalación](#13-desinstalación)
+11. [Memoria RAM](#11-memoria-ram)
+12. [Preguntas frecuentes](#12-preguntas-frecuentes)
+13. [Solución de problemas](#13-solución-de-problemas)
+14. [Desinstalación](#14-desinstalación)
 
 ---
 
@@ -38,6 +39,9 @@ Recorre una unidad completa (o una carpeta) en pocos segundos y te muestra:
 | **Peso por tipo de archivo** | Cuánto suman los `.vhdx`, `.iso`, `.mp4`, `.dll`, etc. |
 | **Carpetas sin acceso** | Lo que no se pudo leer por falta de permisos, para que sepas qué quedó sin contar. |
 
+Con **`mapadisco -ram`** explica en qué se va la memoria RAM, si falta de verdad y qué cerrar o configurar
+(ver la [sección 11](#11-memoria-ram)).
+
 Y con **`mapadisco -clean`** libera espacio: borra cachés y temporales que se regeneran solos, después de mostrarte
 cuánto ocupa cada uno y preguntarte qué limpiar. Lo que no se puede borrar con seguridad te lo explica paso a paso
 (ver la [sección 10](#10-liberar-espacio)).
@@ -47,6 +51,8 @@ cuánto ocupa cada uno y preguntarte qué limpiar. Lo que no se puede borrar con
 - **El análisis (`mapadisco`) no borra, mueve ni modifica nada.** Es de solo lectura. Las sugerencias son eso: sugerencias que tú decides si aplicar.
 - **Solo `mapadisco -clean` borra**, y solo las categorías que aparecen en su lista, después de preguntarte (o con `-yes`).
   Nunca toca tus documentos, fotos, descargas, juegos ni archivos del sistema.
+- `mapadisco -ram` solo lee. Su única acción, `-ram -wslconfig`, muestra el cambio y escribe `.wslconfig` solo si
+  confirmas (guardando una copia del anterior).
 - Fuera de eso, solo escribe su propia instalación (si aceptas instalarlo) y el CSV que pidas con `-csv`.
 - No se conecta a internet ni envía información a ningún lado. La única excepción es `mapadisco -update`, cuando tú lo
   ejecutas: consulta en GitHub cuál es la última versión y la descarga.
@@ -259,7 +265,7 @@ El espacio **no visible** suele estar en:
 
 Para reducir esa diferencia, ejecuta `mapadisco -admin` (ver [Modo Administrador](#9-modo-administrador)).
 
-Si aparece *"El escaneo suma más que lo usado"*, no es un error: ver [Preguntas frecuentes](#11-preguntas-frecuentes).
+Si aparece *"El escaneo suma más que lo usado"*, no es un error: ver [Preguntas frecuentes](#12-preguntas-frecuentes).
 
 También puede aparecer una línea de **archivos solo en la nube** (OneDrive con *Archivos a petición*): esos archivos se ven en el Explorador pero
 no ocupan espacio local, por eso no se cuentan.
@@ -354,12 +360,14 @@ mapadisco [opciones] [ruta]
 | `-no-progress` | desactivado | Oculta la línea de progreso. |
 | `-pause` | desactivado | Espera Enter antes de cerrar. Útil desde un acceso directo. Al abrirlo con doble clic se activa solo. |
 | `-install` | — | Instala mapadisco para tu usuario sin preguntar y sale. Ver [sección 3](#3-instalación). |
-| `-uninstall` | — | Desinstala mapadisco: lo quita del `PATH` y borra su carpeta. Ver [sección 13](#13-desinstalación). |
+| `-uninstall` | — | Desinstala mapadisco: lo quita del `PATH` y borra su carpeta. Ver [sección 14](#14-desinstalación). |
 | `-no-install` | desactivado | No ofrece instalarse; para usarlo portable sin que pregunte cada vez. |
 | `-update` | — | Actualiza a la última versión publicada, verificando su SHA-256. Ver [Actualizar](#actualizar-a-una-versión-nueva). |
 | `-check` | desactivado | Con `-update`: solo consulta si hay una versión nueva, sin instalarla. |
+| `-ram` | — | Diagnóstico de memoria RAM: en qué se va, si falta de verdad y qué hacer. Ver [sección 11](#11-memoria-ram). |
+| `-wslconfig` | desactivado | Con `-ram`: propone limitar la memoria de WSL en `.wslconfig` y lo guarda si confirmas. |
 | `-clean` | — | Libera espacio: mide lo que se puede limpiar, pregunta qué borrar y lo borra. Ver [sección 10](#10-liberar-espacio). |
-| `-yes` | desactivado | Con `-clean`: limpia todas las categorías sin preguntar. |
+| `-yes` | desactivado | Con `-clean`: limpia todas las categorías sin preguntar. Con `-ram -wslconfig`: guarda sin preguntar. |
 | `-only LISTA` | todas | Con `-clean`: solo esas categorías, separadas por coma: `shaders`, `temp`, `temp-sistema`, `papelera`, `volcados`, `dev`. |
 | `-version` | — | Muestra la versión y sale. |
 | `-h` | — | Muestra la ayuda. |
@@ -374,7 +382,7 @@ Las opciones también se pueden escribir con dos guiones (`--depth 4`) y con `=`
 |---|---|
 | `0` | Terminó correctamente. |
 | `1` | Error al exportar el CSV, al pedir permisos de Administrador, al instalar o desinstalar, o al actualizar (sin conexión, SHA-256 distinto…). |
-| `2` | Opción inválida (p. ej. `-min mucho`, una categoría desconocida en `-only`, `-yes` sin `-clean` o `-check` sin `-update`) o la ruta no existe. |
+| `2` | Opción inválida (p. ej. `-min mucho`, una categoría desconocida en `-only`, `-yes` sin `-clean` ni `-wslconfig`, `-check` sin `-update`, `-wslconfig` sin `-ram`) o la ruta no existe. |
 
 Con `-clean`, que Windows no deje borrar algunos archivos **no** es un error: se informa y el código sigue siendo `0`.
 
@@ -431,6 +439,13 @@ mapadisco -no-color -no-progress > reporte.txt
 
 ```
 mapadisco -csv "%USERPROFILE%\Desktop\disco.csv"
+```
+
+**"Mi equipo está lento / tengo poca RAM disponible"**
+
+```
+mapadisco -ram
+mapadisco -ram -wslconfig      (si usas WSL o Docker)
 ```
 
 **Liberar espacio**
@@ -591,7 +606,119 @@ Después de liberar espacio, vuelve a ejecutar `mapadisco` para comprobar el res
 
 ---
 
-## 11. Preguntas frecuentes
+## 11. Memoria RAM
+
+```
+mapadisco -ram
+```
+
+Responde lo que el Administrador de tareas no explica: **en qué se va la memoria, si de verdad falta y qué hacer**.
+Mide durante 2 segundos y muestra tres partes (datos de ejemplo):
+
+```
+── MEMORIA RAM ──────────────────────────────────────────────────────
+  Total                15,7 GB
+  En uso               13,6 GB  ████████████████████░░░░  (de eso, comprimida: 918,4 MB)
+  Disponible            2,1 GB  = en caché 2,0 GB + libre 42,6 MB
+  Confirmada           28,4 GB  de 41,7 GB (RAM + archivo de paginación)
+  Kernel y drivers      2,3 GB  no paginada 1,5 GB · paginada 799,4 MB
+  Presión                MEDIA  la memoria está justa: hoy alcanza, pero abrir algo grande hará que Windows use el disco
+                                lecturas de memoria desde el disco: 196 páginas/s
+
+── QUIÉN USA LA MEMORIA ─────────────────────────────────────────────
+   Reservada      En RAM  Proc.  Aplicación
+      5,5 GB      2,2 GB     22  WSL (Linux de Windows)
+      2,7 GB      1,8 GB      9  Epic Games
+      1,5 GB    977,4 MB     18  Microsoft Edge
+      …
+
+── QUÉ HACER ────────────────────────────────────────────────────────
+  1. Lanzadores de juegos abiertos: Epic Games, Steam, EA app  (hasta ~5,4 GB)
+     → Ciérralos desde el icono junto al reloj cuando no estés jugando …
+  2. WSL (Linux de Windows) reserva 5,5 GB
+     → Limita su memoria y haz que devuelva la que deja de usar: mapadisco -ram -wslconfig …
+```
+
+### Cómo leer los números
+
+Son los mismos que muestra el Administrador de tareas (pestaña *Rendimiento > Memoria*):
+
+| Número | Qué es |
+|---|---|
+| **En uso** | Lo que ocupan los programas y Windows. Entre paréntesis, cuánto de eso está **comprimido**: memoria poco usada que Windows comprime en vez de mandarla al disco. En el Administrador de tareas aparece como *"13,6 GB (918 MB)"*. |
+| **En caché** | Archivos leídos hace poco, guardados por si se vuelven a pedir. **Se liberan al instante** si un programa necesita memoria: no es memoria perdida. |
+| **Disponible** | Caché + libre: lo que se le puede dar a un programa ya. |
+| **Confirmada** | Lo que los programas **reservaron**. Puede superar la RAM porque lo poco usado vive comprimido o en el archivo de paginación. |
+| **Kernel y drivers** | Memoria de Windows y de los controladores. La *no paginada* siempre ocupa RAM; más de ~1 GB es alto. |
+| **Presión** | Lo que de verdad importa: si Windows tiene que **leer memoria desde el disco** (páginas/s). |
+
+Niveles de presión:
+
+| Nivel | Cuándo | Qué significa |
+|---|---|---|
+| **BAJA** | Hay memoria disponible y casi no se lee del disco | La memoria se está aprovechando; no falta. |
+| **MEDIA** | Disponible menor al 15 %, o reservada mayor al 75 % del límite, o lecturas del disco frecuentes | Hoy alcanza, pero abrir algo grande va a hacer que Windows use el disco. |
+| **ALTA** | Muchas lecturas del disco (300+ páginas/s), o casi sin memoria y leyendo del disco, o reservada al 90 % del límite | El equipo se siente lento. Conviene cerrar algo ya. |
+
+Un "Disponible" bajo **no es un problema por sí solo**: Windows usa la RAM libre como caché a propósito. Es un
+problema cuando la presión sube.
+
+### Quién usa la memoria
+
+Agrupa los procesos por aplicación (los 18 procesos de Edge cuentan como "Microsoft Edge"):
+
+- **Reservada:** lo que pidió el programa, esté en RAM, comprimido o en el disco. Es lo que se libera al cerrarlo.
+- **En RAM:** lo que ocupa ahora mismo en la memoria física.
+
+Aplicaciones que reconoce: WSL, Docker Desktop, navegadores (Edge, Chrome, Brave, Firefox, Opera), lanzadores de juegos
+(Steam, Epic, EA, Battle.net, Ubisoft, Riot, Xbox), editores y otras apps comunes, y los servicios de Windows.
+
+### Qué hacer
+
+Las sugerencias aparecen según lo que encuentra, ordenadas por cuánta memoria liberarían:
+
+| Si encuentra… | Sugiere |
+|---|---|
+| **WSL** sin límite de memoria | Limitarlo y que devuelva la memoria que deja de usar: `mapadisco -ram -wslconfig`. Si no estás usando Linux ni Docker, `wsl --shutdown` libera todo al instante. |
+| **Lanzadores de juegos** abiertos | Cerrarlos desde el icono junto al reloj; si arrancan con Windows, desactivarlos en *Aplicaciones de arranque*. |
+| **Varios navegadores** a la vez | Usar uno solo y activar las pestañas en suspensión / ahorro de memoria. |
+| **Docker Desktop** abierto | Cerrarlo si no lo usas (sus contenedores corren dentro de WSL). |
+| Memoria de **drivers** alta | Actualizar drivers y antivirus; si crece día a día, avisar al área de Tecnología. |
+| Cerca del **límite** de memoria | Cerrar programas; no reducir el archivo de paginación. |
+
+### Limitar la memoria de WSL: `mapadisco -ram -wslconfig`
+
+Sin configuración, WSL (el Linux de Windows, que también usa Docker Desktop) puede tomar **hasta la mitad de tu RAM**
+y no la devuelve sola. Este comando:
+
+1. Muestra el `.wslconfig` que propone (en `C:\Users\<tu usuario>\.wslconfig`):
+
+   ```ini
+   [wsl2]
+   memory=6GB
+
+   [experimental]
+   autoMemoryReclaim=gradual
+   ```
+
+   - `memory`: el máximo de RAM para WSL (~3/8 de tu RAM, entre 4 y 8 GB).
+   - `autoMemoryReclaim=gradual`: Linux devuelve a Windows la memoria que deja de usar.
+2. Pregunta `¿Guardar este .wslconfig? [s/N]` (Enter = no). Con `-yes` guarda sin preguntar.
+3. Si ya tenías un `.wslconfig`, **solo agrega o cambia esas dos claves** y deja el resto igual; guarda una copia en
+   `.wslconfig.bak`. Si ya tenías un límite propio, lo respeta.
+4. Se aplica la próxima vez que arranque WSL. Para aplicarlo ya: `wsl --shutdown`. **Ojo:** cierra las terminales de
+   Linux y Docker; hazlo cuando no los estés usando.
+
+### Lo que `-ram` no hace (y por qué)
+
+No tiene un botón de "liberar RAM". Los "liberadores de RAM" vacían la memoria de los programas: Windows manda esos
+datos al disco y, en cuanto el programa los vuelve a usar, los lee de nuevo, así que **el equipo queda más lento**.
+Vaciar la caché tampoco ayuda: es memoria disponible que acelera lo que abres. La memoria se libera de verdad
+**cerrando lo que no usas** o **limitando lo que reserva de más** (como WSL), que es lo que sugiere mapadisco.
+
+---
+
+## 12. Preguntas frecuentes
 
 **¿Por qué el Explorador muestra otro tamaño para una carpeta?**
 El Explorador muestra el tamaño lógico. mapadisco usa el espacio real en disco para los archivos comprimidos o dispersos, no cuenta los
@@ -630,7 +757,7 @@ habituales solo aparecen al analizar la raíz de una unidad con letra.
 
 ---
 
-## 12. Solución de problemas
+## 13. Solución de problemas
 
 | Problema | Solución |
 |---|---|
@@ -645,6 +772,8 @@ habituales solo aparecen al analizar la raíz de una unidad con letra.
 | `no existe o no es una carpeta` | Revisa la ruta. Si tiene espacios, ponla entre comillas: `mapadisco "D:\Mis juegos"`. |
 | Una opción no hace efecto | Ponla **antes** de la ruta (ver [sección 6](#6-opciones)). |
 | Muy lento en un disco mecánico | Usa `-workers 4`. |
+| `-ram -wslconfig` guardó el archivo pero WSL sigue usando lo mismo | El cambio se aplica al reiniciar WSL: `wsl --shutdown` (cierra Linux y Docker) y vuelve a abrirlos. |
+| Tras `-ram -wslconfig`, algo en Linux o Docker va lento o se queda sin memoria | El límite quedó corto para lo que haces: sube `memory=` en `.wslconfig` (o restaura `.wslconfig.bak`) y `wsl --shutdown`. |
 | `-update` dice *"No se pudo consultar la última versión"* | Revisa la conexión a internet. En redes con proxy, GitHub puede estar bloqueado: consulta con el área de Tecnología o actualiza descargando el `.exe` a mano (opción B de la [sección 3](#3-instalación)). |
 | *"flag provided but not defined: -update"* | Tu versión es anterior a `-update`: actualiza esa vez reinstalando (ver [Actualizar](#actualizar-a-una-versión-nueva)). |
 | `-update` dice *"el SHA-256 … no coincide"* | La descarga llegó incompleta o alterada y no se instaló nada. Vuelve a intentarlo; si se repite, avisa al área de Tecnología. |
@@ -654,7 +783,7 @@ habituales solo aparecen al analizar la raíz de una unidad con letra.
 
 ---
 
-## 13. Desinstalación
+## 14. Desinstalación
 
 En cualquier terminal:
 
