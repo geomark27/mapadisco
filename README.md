@@ -31,6 +31,8 @@ mapadisco -no-expand              # no bajar más allá de -depth
 mapadisco -csv reporte.csv        # exporta las carpetas >= 10 MB para Excel (separador ;)
 mapadisco -clean                  # libera espacio: muestra qué se puede limpiar y pregunta qué borrar
 mapadisco -clean -admin           # lo mismo, incluyendo los temporales de Windows
+mapadisco -ram                    # memoria RAM: en qué se va, si falta de verdad y qué cerrar o configurar
+mapadisco -ram -wslconfig         # propone limitar la memoria de WSL (pregunta antes de guardar)
 mapadisco D:\                     # otra unidad o carpeta
 mapadisco -h                      # todas las opciones
 ```
@@ -42,6 +44,9 @@ mapadisco -h                      # todas las opciones
 - **Sospechosos habituales**: caché de shaders de la GPU, discos de WSL/Docker (`.vhdx`), hiberfil.sys, pagefile, Windows.old, caché de Windows Update, puntos de restauración, Steam/Xbox/Epic, cachés de npm/pip/Gradle, Android SDK, navegadores, etc., cada uno con una sugerencia.
 - **Archivos más grandes** y **peso por tipo de archivo**.
 - **Carpetas sin acceso**: sin permisos de Administrador, su contenido no se cuenta.
+- **Memoria RAM (`-ram`)**: los números del Administrador de tareas explicados, la presión real (lecturas de memoria
+  desde el disco), qué aplicaciones reservan más (WSL, navegadores, lanzadores…) y sugerencias concretas; sin
+  «liberadores de RAM», que vuelven el equipo más lento.
 - **Limpieza (`-clean`)**: caché de shaders, temporales, Papelera, volcados de errores y cachés de npm/pip/yarn, con
   confirmación. Si Windows no deja borrar algo (archivo en uso o sin permiso) lo salta y te dice qué hacer; y lista con
   sus pasos lo que solo se libera a mano (Windows Update, WinSxS, WSL, Docker, juegos, hibernación…).

@@ -15,6 +15,7 @@ mapadisco/
 │   ├── installer/          Autoinstalación: copia a %LOCALAPPDATA%\Programs\mapadisco y PATH del usuario
 │   ├── cleaner/            Limpieza (-clean): catálogo de categorías, medir, borrar contenido, guías manuales
 │   ├── updater/            Actualización (-update): última versión en GitHub, descarga verificada, reemplazo
+│   ├── memory/             Memoria RAM (-ram): agrupar procesos, presión, sugerencias, editar .wslconfig
 │   └── format/             Tamaños, porcentajes, barras, miles; sin dependencias
 ├── scripts/                install.ps1 (instalación de una línea), check.sh, version.sh, merge/promote/release(-prep).sh
 ├── .claude/skills/devlog/  Bitácora (devlog), configurada en .devlog.conf
@@ -40,7 +41,8 @@ cmd/mapadisco ──► report ──► scanner ──► winapi ──► gola
       ├──► hotspots ────────────┘ (y winapi)
       ├──► installer ──────────────────────┘
       ├──► cleaner   (portable; cmd le pasa winapi.IsInUse y vacía la Papelera con winapi)
-      └──► updater   (portable; red solo con -update)
+      ├──► updater   (portable; red solo con -update)
+      └──► memory    (portable; cmd le pasa la foto que lee winapi)
 ```
 
 - `winapi` no depende de nadie del proyecto. Nada fuera de él usa `syscall` ni el registro.
@@ -61,6 +63,22 @@ cmd/mapadisco ──► report ──► scanner ──► winapi ──► gola
 4. La Papelera se vacía con `SHEmptyRecycleBinW` (sin diálogos).
 5. `cmd` informa por categoría y, si Windows se opuso, el motivo, qué hacer, la ruta manual y el `explorer "…"` de la
    carpeta; luego el espacio libre real antes y después (`GetDiskFreeSpaceExW`) y las guías manuales con su tamaño.
+
+## Memoria RAM (`internal/memory`, `-ram`)
+
+1. `cmd` arma un `memory.Snapshot` con lo que lee `winapi`:
+   - totales con `GetPerformanceInfo` (RAM, disponible, confirmada y su límite, memoria del kernel);
+   - contadores de rendimiento con PDH durante 2 s, con nombres en inglés (`PdhAddEnglishCounterW`, que funciona en
+     Windows en cualquier idioma): páginas de entrada/s, lista libre, modificada y en caché (standby);
+   - procesos con `NtQuerySystemInformation(SystemProcessInformation)`: memoria en RAM y reservada (privada) de
+     **todos**, incluidos los protegidos (`vmmemWSL`, `Memory Compression`), sin abrir cada proceso. Abrirlos uno por
+     uno (primera versión) dejaba fuera a WSL y a la memoria comprimida;
+   - programas de arranque (claves `Run` y su estado en `StartupApproved`) y `%USERPROFILE%\.wslconfig`.
+2. `GroupProcesses` agrupa por aplicación con un catálogo de familias (navegadores, lanzadores, WSL, Docker…).
+3. `Pressure` decide BAJA/MEDIA/ALTA por las lecturas del disco, el % disponible y la memoria confirmada.
+4. `Advice` genera sugerencias por reglas y las ordena por ahorro inmediato estimado.
+5. `-ram -wslconfig`: `ProposeWSLConfig` + `SetKey` editan el `.wslconfig` sin tocar comentarios, otras secciones ni
+   otras claves; `cmd` lo muestra, pregunta, guarda `.bak` y escribe.
 
 ## Actualización (`internal/updater`, `-update`)
 
@@ -112,6 +130,7 @@ El mismo `.exe` del release se instala solo, como draco:
 
 | Quiero… | Dónde |
 |---|---|
+| Reconocer otra aplicación en `-ram` | Una familia en `families` (`internal/memory/memory.go`) con sus nombres de proceso; un tipo (`Kind`) si debe disparar una sugerencia. |
 | Agregar una categoría de limpieza | Una entrada en `cleaner.Auto` (o en `cleaner.Manual` si no debe borrarse sola). La prueba del catálogo exige rutas con variables de entorno. |
 | Agregar un sospechoso habitual | Una entrada en `hotspots.Catalog` (`internal/hotspots/catalog.go`). La prueba del catálogo valida el formato. |
 | Agregar una sección al reporte | Un método nuevo en `report.Printer` y su llamada en `cmd/mapadisco/main_windows.go`. |
