@@ -6,7 +6,7 @@ Mapa de uso de disco para Windows desde la terminal. **Solo lectura**: no borra 
 
 ## Instalar
 
-1. Descomprime `mapadisco-<versión>-windows-x64.zip`.
+1. Descarga `mapadisco-vX.Y.Z-windows-amd64.zip` (y `checksums.txt` para verificarlo) desde **Releases** en GitHub, y descomprímelo.
 2. Doble clic en `instalar.cmd`. Se instala para tu usuario en `%LOCALAPPDATA%\Programs\mapadisco` y se agrega al PATH; no requiere Administrador.
 3. Abre una **nueva** terminal y ejecuta `mapadisco`.
 
@@ -44,9 +44,15 @@ mapadisco -h                      # todas las opciones
 Requiere Go 1.26+. Se puede desarrollar desde Linux/WSL: el código de Windows está aislado y las pruebas corren en cualquier sistema.
 
 ```
-go test ./...            # pruebas (portables)
-GOOS=windows go vet ./...
-scripts/build.sh         # pruebas + vet + compila → dist/mapadisco-<VERSION>-windows-x64.zip
+make                     # lista todos los atajos
+make test                # pruebas (portables)
+make lint                # gofmt + vet para Linux y Windows
+make run args="-depth 4" # compila el .exe y lo ejecuta en Windows desde WSL
+make package             # zip instalable en dist/
+make check               # verificaciones antes del commit
 ```
 
-La versión se toma del archivo `VERSION`. La estructura y cómo extender el programa están en [docs/arquitectura.md](docs/arquitectura.md).
+- Estructura y cómo extender el programa: [docs/arquitectura.md](docs/arquitectura.md).
+- Ramas (`main` ← `develop` ← `feature/<tema>`), commits y PR: [docs/flujo-de-trabajo.md](docs/flujo-de-trabajo.md).
+- Versionado (tag de git, SemVer) y publicación: [docs/release.md](docs/release.md).
+- Historia de cada cambio: [docs/bitacora/](docs/bitacora/README.md).

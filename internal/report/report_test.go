@@ -15,10 +15,10 @@ func add(parent *scanner.Node, name string, size int64) *scanner.Node {
 	return n
 }
 
-// sample: 100 GB en C:\Users\Marcos\AppData\Local\NVIDIA (profundo) + 20 GB en Windows.
+// sample: 100 GB en C:\Users\Usuario\AppData\Local\NVIDIA (profundo) + 20 GB en Windows.
 func sample() *scanner.Node {
 	root := &scanner.Node{Name: `C:\`}
-	local := add(add(add(add(root, "Users", 0), "Marcos", 0), "AppData", 0), "Local", 0)
+	local := add(add(add(add(root, "Users", 0), "Usuario", 0), "AppData", 0), "Local", 0)
 	add(local, "NVIDIA", 100*format.GB)
 	add(root, "Windows", 20*format.GB)
 	add(root, "Pequeña", 5*format.MB)
@@ -70,7 +70,7 @@ func TestWriteCSV(t *testing.T) {
 	if !strings.HasPrefix(out, "\uFEFFRuta;Bytes;GB") {
 		t.Errorf("falta BOM o cabecera: %q", out[:min(40, len(out))])
 	}
-	if !strings.Contains(out, `"C:\Users\Marcos\AppData\Local\NVIDIA";107374182400;100,000;1;5;no`) {
+	if !strings.Contains(out, `"C:\Users\Usuario\AppData\Local\NVIDIA";107374182400;100,000;1;5;no`) {
 		t.Errorf("fila de NVIDIA incorrecta:\n%s", out)
 	}
 	if strings.Contains(out, "Pequeña") {

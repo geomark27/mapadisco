@@ -17,7 +17,7 @@ import (
 	"mapadisco/internal/winapi"
 )
 
-// version se inyecta al compilar: -ldflags "-X main.version=1.2.3" (ver scripts/build.sh).
+// version se inyecta al compilar desde el tag de git: -ldflags "-X main.version=v1.2.3" (ver scripts/package.sh).
 var version = "dev"
 
 // hotspotMinSize: los sospechosos más pequeños no se muestran.
