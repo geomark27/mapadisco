@@ -40,9 +40,10 @@ Recorre una unidad completa (o una carpeta) en pocos segundos y te muestra:
 
 ### Lo que NO hace
 
-- **No borra, mueve ni modifica nada.** Es de solo lectura. Las sugerencias son eso: sugerencias que tú decides si aplicar.
+- **No borra, mueve ni modifica nada del disco que analiza.** Es de solo lectura. Las sugerencias son eso: sugerencias que tú decides si aplicar.
+  Lo único que escribe es su propia instalación (si aceptas instalarlo) y el CSV que pidas con `-csv`.
 - No se conecta a internet ni envía información a ningún lado.
-- No necesita quedarse instalado ni corre en segundo plano.
+- No corre en segundo plano ni queda residente: solo funciona mientras lo ejecutas.
 
 ### Por qué es rápido
 
@@ -62,79 +63,92 @@ tarda del orden de 30 segundos la primera vez y 3 a 5 segundos las siguientes (W
 
 ## 3. Instalación
 
-### Descargar
+mapadisco es **un solo archivo**: `mapadisco-windows-amd64.exe`. No hay zip ni instalador aparte: el mismo `.exe`
+se instala solo la primera vez que lo abres. La instalación es **solo para tu usuario** y no pide permisos de
+Administrador: copia el programa a `%LOCALAPPDATA%\Programs\mapadisco` (normalmente
+`C:\Users\<tu usuario>\AppData\Local\Programs\mapadisco`) y agrega esa carpeta a tu `PATH`, para que puedas
+escribir `mapadisco` desde cualquier terminal.
 
-Las versiones publicadas están en la página **Releases** del repositorio en GitHub
-(`https://github.com/geomark27/mapadisco/releases`). De la última versión descarga:
+### Opción A — Una línea en PowerShell (recomendada)
 
-- `mapadisco-vX.Y.Z-windows-amd64.zip`: el programa y su instalador (`vX.Y.Z` es el número de versión);
-- `checksums.txt`: la huella SHA-256 de cada zip, para comprobar que la descarga está completa y no fue alterada.
-
-**Verificar la descarga (recomendado).** En PowerShell, en la carpeta de descargas:
-
-```powershell
-Get-FileHash .\mapadisco-vX.Y.Z-windows-amd64.zip
-```
-
-El valor `Hash` debe ser igual al que aparece junto a ese nombre en `checksums.txt` (mayúsculas y minúsculas dan igual).
-Si no coincide, no lo instales: vuelve a descargarlo.
-
-### Opción A — Instalador (recomendada)
-
-1. Descomprime el zip en cualquier carpeta (por ejemplo, Descargas). Se crea la carpeta
-   `mapadisco-vX.Y.Z-windows-amd64` con:
-
-   ```
-   mapadisco.exe          el programa
-   instalar.cmd           instala
-   desinstalar.cmd        desinstala
-   install.ps1            script que usan los dos anteriores
-   GUIA-DE-USUARIO.md     esta guía
-   README.md
-   ```
-
-2. Haz **doble clic en `instalar.cmd`**. Se abrirá una ventana que:
-   - copia `mapadisco.exe` a `%LOCALAPPDATA%\Programs\mapadisco`
-     (normalmente `C:\Users\<tu usuario>\AppData\Local\Programs\mapadisco`);
-   - agrega esa carpeta a tu `PATH` de usuario, para que puedas escribir `mapadisco` desde cualquier terminal.
-
-   Verás el mensaje **"mapadisco instalado."** Presiona una tecla para cerrar.
-
-3. **Cierra y vuelve a abrir la terminal** (el `PATH` nuevo solo se aplica a terminales abiertas después de instalar).
-
-4. Comprueba la instalación:
-
-   ```
-   mapadisco -version
-   ```
-
-   Debe responder con la versión que descargaste, por ejemplo `mapadisco v1.2.0`.
-
-> La instalación es solo para tu usuario: no toca archivos del sistema ni pide permisos de Administrador.
-> Después de instalar puedes borrar el zip y la carpeta descomprimida.
-
-### Opción B — Sin instalar (portable)
-
-Abre una terminal en la carpeta donde está `mapadisco.exe` y ejecútalo directamente:
-
-```
-.\mapadisco.exe
-```
-
-En el Explorador, puedes escribir `cmd` o `powershell` en la barra de direcciones de esa carpeta para abrir una terminal ahí.
-
-### Opción C — Instalación manual con PowerShell
-
-Si prefieres no usar el `.cmd`:
+Abre PowerShell y pega:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
+irm https://raw.githubusercontent.com/geomark27/mapadisco/main/scripts/install.ps1 | iex
 ```
+
+El script descarga el `.exe` del último release, **verifica su SHA-256** contra `checksums.txt` (si no coincide, no
+instala nada), lo instala y muestra la versión instalada. Para instalar una versión concreta:
+
+```powershell
+$env:MAPADISCO_VERSION = "v0.2.0"; irm https://raw.githubusercontent.com/geomark27/mapadisco/main/scripts/install.ps1 | iex
+```
+
+### Opción B — Descargar el .exe y abrirlo
+
+1. En la página **Releases** del repositorio (`https://github.com/geomark27/mapadisco/releases`), descarga de la
+   última versión `mapadisco-windows-amd64.exe` y, si quieres verificarlo, `checksums.txt`.
+2. *(Recomendado)* Verifica la descarga en PowerShell, en la carpeta de descargas:
+
+   ```powershell
+   Get-FileHash .\mapadisco-windows-amd64.exe
+   ```
+
+   El valor `Hash` debe ser igual al que aparece junto a ese nombre en `checksums.txt` (mayúsculas y minúsculas dan
+   igual). Si no coincide, no lo abras: vuelve a descargarlo.
+3. **Haz doble clic en `mapadisco-windows-amd64.exe`** (o ejecútalo desde una terminal). Verás:
+
+   ```
+   mapadisco no está instalado
+     Se copiará a C:\Users\Usuario\AppData\Local\Programs\mapadisco y esa carpeta se agregará a tu PATH.
+     Solo para tu usuario; no necesita permisos de Administrador.
+
+   ¿Instalar mapadisco ahora? [S/n]:
+   ```
+
+   Presiona **Enter** (o `s`). Verás:
+
+   ```
+     ✓ Instalado en C:\Users\Usuario\AppData\Local\Programs\mapadisco\mapadisco.exe
+     ✓ Carpeta agregada al PATH de tu usuario
+       Abre una terminal nueva y escribe: mapadisco
+   ```
+
+   Si lo abriste con doble clic, la ventana espera a que presiones Enter para cerrarse.
+4. Ya puedes borrar el archivo descargado.
+
+Si respondes `n`, no se instala nada y mapadisco hace el análisis igual (ver la opción C).
+
+### Comprobar la instalación
+
+Abre una **terminal nueva** (el `PATH` nuevo solo lo ven las terminales abiertas después de instalar) y escribe:
+
+```
+mapadisco -version
+```
+
+Debe responder con la versión instalada, por ejemplo `mapadisco v0.2.0`.
+
+### Opción C — Sin instalar (portable)
+
+Si prefieres no instalarlo, ejecuta el `.exe` desde su carpeta con `-no-install`: no pregunta nada y analiza directamente.
+
+```
+.\mapadisco-windows-amd64.exe -no-install
+```
+
+En el Explorador, puedes escribir `cmd` o `powershell` en la barra de direcciones de esa carpeta para abrir una
+terminal ahí. Sin instalar, el comando `mapadisco` no existe en otras carpetas.
+
+### Instalar desde un script
+
+`mapadisco-windows-amd64.exe -install` instala sin preguntar y termina (código de salida 0 si todo fue bien).
 
 ### Actualizar a una versión nueva
 
-Descarga el zip de la versión nueva desde *Releases*, descomprímelo y vuelve a ejecutar `instalar.cmd`.
-Reemplaza el ejecutable anterior; el `PATH` no se duplica. Confírmalo con `mapadisco -version`.
+Repite la instalación con la versión nueva: la línea de PowerShell de la opción A, o descarga el `.exe` nuevo y
+ábrelo. Reemplaza el ejecutable anterior aunque mapadisco esté abierto en otra ventana, y el `PATH` no se duplica.
+Confírmalo con `mapadisco -version`.
 
 ### Si Windows muestra una advertencia
 
@@ -308,7 +322,10 @@ mapadisco [opciones] [ruta]
 | `-workers N` | automático | Hilos de lectura en paralelo. Automático = 3 × núcleos del procesador (entre 8 y 96). Bájalo (p. ej. `-workers 4`) en discos mecánicos (HDD) o de red. |
 | `-no-color` | desactivado | Sin colores. También se respeta la variable de entorno `NO_COLOR`. |
 | `-no-progress` | desactivado | Oculta la línea de progreso. |
-| `-pause` | desactivado | Espera Enter antes de cerrar. Útil desde un acceso directo. |
+| `-pause` | desactivado | Espera Enter antes de cerrar. Útil desde un acceso directo. Al abrirlo con doble clic se activa solo. |
+| `-install` | — | Instala mapadisco para tu usuario sin preguntar y sale. Ver [sección 3](#3-instalación). |
+| `-uninstall` | — | Desinstala mapadisco: lo quita del `PATH` y borra su carpeta. Ver [sección 13](#13-desinstalación). |
+| `-no-install` | desactivado | No ofrece instalarse; para usarlo portable sin que pregunte cada vez. |
 | `-version` | — | Muestra la versión y sale. |
 | `-h` | — | Muestra la ayuda. |
 
@@ -321,7 +338,7 @@ Las opciones también se pueden escribir con dos guiones (`--depth 4`) y con `=`
 | Código | Significado |
 |---|---|
 | `0` | Terminó correctamente. |
-| `1` | Error al exportar el CSV o al pedir permisos de Administrador. |
+| `1` | Error al exportar el CSV, al pedir permisos de Administrador, o al instalar o desinstalar. |
 | `2` | Opción inválida (p. ej. `-min mucho`) o la ruta no existe. |
 
 ---
@@ -491,9 +508,11 @@ habituales solo aparecen al analizar la raíz de una unidad con letra.
 
 | Problema | Solución |
 |---|---|
-| `"mapadisco" no se reconoce como un comando…` | Cierra y abre una terminal nueva después de instalar. Si sigue igual, vuelve a ejecutar `instalar.cmd` o usa la ruta completa: `%LOCALAPPDATA%\Programs\mapadisco\mapadisco.exe`. |
-| `instalar.cmd` se cierra con un error rojo | Verifica que `mapadisco.exe` esté en la misma carpeta que `instalar.cmd` (descomprime el zip completo; no lo ejecutes desde dentro del zip). |
-| *"La ejecución de scripts está deshabilitada"* | Usa `instalar.cmd` (ya lo resuelve) o la [opción C](#opción-c--instalación-manual-con-powershell). |
+| `"mapadisco" no se reconoce como un comando…` | Cierra y abre una terminal nueva después de instalar. Si sigue igual, vuelve a instalar (ver [sección 3](#3-instalación)) o usa la ruta completa: `%LOCALAPPDATA%\Programs\mapadisco\mapadisco.exe`. |
+| Pregunta *"¿Instalar mapadisco ahora?"* cada vez | Lo estás ejecutando desde la carpeta de descargas, no desde la instalación. Instálalo (Enter) y usa `mapadisco`, o agrega `-no-install` si lo quieres portable. |
+| La línea de PowerShell dice *"el SHA-256 no coincide"* | La descarga llegó incompleta o alterada y no se instaló nada. Vuelve a intentarlo; si se repite, avisa al área de Tecnología. |
+| *"La ejecución de scripts está deshabilitada"* | La línea `irm … \| iex` no ejecuta un archivo de script, así que no debería pasar. Si tu equipo lo bloquea igual, usa la [opción B](#opción-b--descargar-el-exe-y-abrirlo). |
+| La ventana se cierra sola al abrir el `.exe` | No debería pasar: con doble clic espera Enter antes de cerrarse. Si pasa, ábrelo desde una terminal para ver el mensaje. |
 | Aparecen símbolos raros como `←[33m` | Tu terminal no interpreta colores (cmd antiguo). Usa Windows Terminal o agrega `-no-color`. |
 | Las barras `█` o las líneas `├─` se ven como `?` | Usa Windows Terminal, o una fuente como Cascadia Mono o Consolas. |
 | `-admin` no abre nada | Acepta el aviso de UAC; si lo rechazaste se muestra *"No se pudo elevar"*. Tu cuenta debe tener permisos de Administrador. |
@@ -506,12 +525,19 @@ habituales solo aparecen al analizar la raíz de una unidad con letra.
 
 ## 13. Desinstalación
 
-Doble clic en **`desinstalar.cmd`** (del zip). Borra `%LOCALAPPDATA%\Programs\mapadisco` y lo quita del `PATH`.
+En cualquier terminal:
 
-Desde PowerShell, el equivalente es:
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -Uninstall
 ```
+mapadisco -uninstall
+```
+
+```
+  ✓ Carpeta quitada del PATH de tu usuario
+  ✓ La carpeta C:\Users\Usuario\AppData\Local\Programs\mapadisco se borrará en unos segundos, al cerrar mapadisco
+```
+
+Quita la carpeta de tu `PATH` (el resto del `PATH` queda exactamente como estaba) y borra
+`%LOCALAPPDATA%\Programs\mapadisco`. Como Windows no deja borrar un programa mientras se ejecuta, la carpeta se borra
+unos segundos después de que mapadisco termina. Si mapadisco está abierto en otra ventana, ciérrala antes.
 
 mapadisco no deja otros archivos, servicios ni entradas en el registro. Los CSV que hayas exportado quedan donde los guardaste.

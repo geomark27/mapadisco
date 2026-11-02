@@ -1,0 +1,453 @@
+# devlog — how it works
+
+Full guide to the change log system: what it is, why it is built this way, daily use, how it is
+closed on each release, and how it works with **one person, one agent, or many agents at once**.
+
+> **Language.** This guide, the skill and the scripts are in English. The *content* of each
+> project's log (entry headings, titles, bodies, release cards) is written in the language the
+> project chooses (`DEVLOG_LANG`), e.g. Spanish for a team that works in Spanish.
+
+---
+
+## 1. What it is
+
+A record, inside the repository, of **what changed, why, and which version shipped it**.
+
+| Source         | Answers                                   |
+|----------------|-------------------------------------------|
+| `git log`      | *How* it changed (line by line)           |
+| Release notes  | *Which* commits went in                   |
+| **devlog**     | *Why*, *how to test it*, *what is left*   |
+
+It lives in a folder of the repo (default `docs/devlog`), as Markdown, versioned with the code.
+It reads fine on GitHub, in an editor, or from an agent with no special tooling.
+
+---
+
+## 2. Why this model
+
+There are three common ways to keep a log. We chose the third.
+
+| Model | Upside | Problem |
+|---|---|---|
+| A single `CHANGELOG.md` | Everything in one place | Every PR edits **the same top lines** → constant merge conflicts with parallel branches or agents |
+| One file per commit | No conflicts | Too much noise; repeats what git already says |
+| **One entry per branch + one card per release** | No conflicts (each branch touches only its own file), useful level of detail, the release groups entries automatically | Someone must remember to write it → solved by the skill, `verify.sh` and a PR check |
+
+The unit is **the branch** because that is the unit of work that gets reviewed (PR) and merged.
+The release is the unit that gets published, so it groups entries.
+
+---
+
+## 3. Layout
+
+```
+.devlog.conf               ← settings (repo root)
+docs/devlog/               ← DEVLOG_DIR
+├── README.md              ← rules + version index (table between markers)
+├── entry-template.md      ← entry template (project copy wins over the skill's)
+├── entries/
+│   ├── 2026-11-01-feat-qr-login.md
+│   └── 2026-11-03-fix-negative-floor.md
+└── releases/
+    ├── v1.0.0.md
+    └── v1.1.0.md
+```
+
+**Entry file names:** `YYYY-MM-DD-<type>-<topic>.md`, from the creation date and the branch
+(`feat/qr-login` → `feat` + `qr-login`). The date prefix makes `ls` chronological; the topic makes
+it unique per branch.
+
+### `.devlog.conf`
+
+```ini
+# devlog settings (parsed, never executed)
+DEVLOG_DIR=docs/bitacora
+DEVLOG_LANG=es
+# DEVLOG_PROTECTED=main master develop
+# DEVLOG_REQUIRED=Qué cambia|Por qué
+```
+
+The file is parsed as `KEY=value` lines and never sourced, so it cannot run code. Environment
+variables override it.
+
+---
+
+## 4. Anatomy of an entry
+
+Example from a Spanish-language project (`DEVLOG_LANG=es`):
+
+```markdown
+---
+date: 2026-11-01
+branch: feat/qr-login
+type: feat
+author: Jane Doe
+agents: claude:orchestrator, claude:frontend
+pr: "#14"
+version: unreleased
+---
+
+# Entrar a la sala con QR
+
+## Qué cambia
+## Por qué
+## Archivos y áreas
+## Cómo probarlo
+## Notas y pendientes
+```
+
+The same entry in an English project uses *What changes / Why / Files and areas / How to test /
+Notes and follow-ups*. Headings come from `templates/<lang>/entry.md`.
+
+### Front matter (always English: it is machine data)
+
+| Key | Set by | Value |
+|---|---|---|
+| `date` | script | Creation day (`YYYY-MM-DD`). Never changes. |
+| `branch` | script | Exact branch name. **It is the key** used to find a branch's entry. |
+| `type` | script (from the branch prefix) | `feat`, `fix`, `chore`, `docs`, `refactor`, `perf`, `test` |
+| `author` | script (`git config user.name`) | The person responsible, even when an agent writes it |
+| `agents` | script (`DEVLOG_AGENT`) + orchestrator | Agents that took part. Empty for a person alone |
+| `pr` | whoever opens the PR | `pending` → `"#14"` |
+| `version` | **the release only** | `unreleased` → `v1.1.0`. **Never by hand.** |
+
+### Sections
+
+| Section (en / es) | Required | Content |
+|---|---|---|
+| What changes / Qué cambia | **Yes** | What users of the product or people on the repo will notice |
+| Why / Por qué | **Yes** | The problem or motivation. The most valuable part |
+| Files and areas / Archivos y áreas | Recommended | Main paths, not the full diff |
+| How to test / Cómo probarlo | Recommended | Reproducible commands or steps |
+| Notes and follow-ups / Notas y pendientes | Optional | Decisions, limitations, debt. Delete if empty |
+
+Required headings come from `templates/<lang>/lang.sh` (`L_REQUIRED`) and can be overridden with
+`DEVLOG_REQUIRED`.
+
+**Good:** "The floor row could push the round below zero; the minimum is now 0, as the rules say."
+**Bad:** "Fixed a bug in the calculation."
+
+---
+
+## 5. Anatomy of a release card
+
+Generated by `close-release.sh`; nobody writes it by hand. Headings are localized.
+
+```markdown
+---
+version: v1.1.0
+date: 2026-11-10
+type: minor
+previous: v1.0.0
+---
+
+# v1.1.0
+
+## Entradas de bitácora          ← "Log entries" in English
+- [Entrar a la sala con QR](../entries/2026-11-01-feat-qr-login.md)
+
+## Notas                         ← "Notes"
+### Novedades
+- …
+
+**Comparar:** https://github.com/owner/repo/compare/v1.0.0...v1.1.0
+```
+
+It also adds a row at the top of the README table, between `<!-- releases:start -->` and
+`<!-- releases:end -->`.
+
+---
+
+## 6. Lifecycle
+
+```
+ branch feat/x          PR → develop              main             release
+ ─────────────          ────────────              ────             ───────
+ new-entry.sh      ──►  verify.sh --base     ──►  (entry      ──►  close-release.sh
+ version: unreleased    (PR check)                travels with     version: v1.1.0
+ filled in and                                    the merge)       + releases/v1.1.0.md
+ committed with                                                    + README index row
+ the change                                                        → "release: v1.1.0" commit
+```
+
+1. **Created** on the change's branch, with `version: unreleased`.
+2. **Filled in and committed** on the same branch as the code: they enter the PR together.
+3. **Verified** before the PR (`verify.sh --base develop`).
+4. **Travels with the merge** into `develop` and then `main`. Several unreleased entries coexist
+   without conflicts because they are separate files.
+5. **Closed at release**: every `unreleased` entry gets the published version and is linked from
+   the release card.
+
+---
+
+## 7. Daily use (one person or one agent)
+
+```bash
+S=~/.claude/skills/devlog/scripts        # or .claude/skills/devlog/scripts if vendored
+
+git switch -c fix/negative-floor
+f=$($S/new-entry.sh "Suelo sin puntos negativos")    # prints the path
+$EDITOR "$f"                                         # required sections at least
+git add -A && git commit -m "fix: floor row no longer makes the round negative"
+$S/verify.sh --base develop                          # before opening the PR
+```
+
+- If the branch already has an entry, `new-entry.sh` **does not create another**: it warns and
+  returns the existing path.
+- It refuses on `main`, `master` or `develop` (configurable with `DEVLOG_PROTECTED`).
+- It refuses on a detached HEAD: create the branch first.
+
+---
+
+## 8. Working with multiple agents
+
+The system holds up with many agents because of three principles:
+
+1. **One branch = one entry = one owner.** Only the owner writes a branch's entry.
+2. **Idempotent, atomic creation.** `new-entry.sh` uses `noclobber` (`set -C`): when several
+   processes run it on the same branch at the same time, exactly one creates the file and all get
+   the same path. Tested with 4 parallel processes: one file.
+3. **Separate files per branch.** Agents on different branches never touch the same file, so
+   merging never conflicts.
+
+### Roles
+
+| Role | Writes to the log folder | Does |
+|---|---|---|
+| **Orchestrator / lead** | **Yes** (owns its branch's entry) | Creates the entry, collects subagent contributions, consolidates them |
+| **Subagent on the same branch** | **No** | Ends its report with a `DEVLOG CONTRIBUTION` block |
+| **Agent on its own branch or worktree** | Yes, only **its** branch's entry | Same as a person: create, fill in, verify |
+| **Reviewer** | No | Runs `verify.sh`, checks the entry matches the diff, requests fixes |
+| **Release** | Only through `close-release.sh` | A single actor (person or designated agent) per version |
+
+### Scenario A — parallel agents, each on its own branch or worktree
+
+```
+develop
+ ├── feat/rooms-api     ← agent 1 → entries/…-feat-rooms-api.md
+ ├── feat/rooms-ui      ← agent 2 → entries/…-feat-rooms-ui.md
+ └── test/rooms-e2e     ← agent 3 → entries/…-test-rooms-e2e.md
+```
+
+Each agent follows section 7 on its own branch. On merge, the three entries reach `develop` with no
+conflicts and the next release groups them. With Claude Code's Agent tool and
+`isolation: "worktree"`, each subagent works in its own copy: each creates its branch and entry.
+
+### Scenario B — orchestrator + subagents on the same branch
+
+Only the orchestrator touches the entry. Before dispatching subagents:
+
+```bash
+f=$(DEVLOG_AGENT="claude:orchestrator" new-entry.sh "Salas con QR")
+```
+
+Every subagent prompt includes:
+
+> Do not edit the devlog folder. End your report with a `DEVLOG CONTRIBUTION` block with the lines
+> `agent:`, `what:`, `why:`, `files:`, `test:`, `follow-up:`.
+
+Contribution format (plain text at the end of the subagent's report; it may be in any language,
+the orchestrator writes the final entry in the project language):
+
+```
+DEVLOG CONTRIBUTION
+agent: claude:frontend
+what: Scan screen using the rear camera; falls back to typing the code.
+why: jsQR is slow on older phones; manual entry keeps the game going.
+files: app/room/scan/page.tsx, lib/qr.ts
+test: make lan → open /room/scan on the phone
+follow-up: not tested on iOS 15 yet
+```
+
+The orchestrator:
+
+1. Merges every contribution into **one** coherent entry, in the project language (it writes
+   prose, it does not paste blocks).
+2. Adds each `agent:` to the `agents:` front matter key.
+3. Runs `verify.sh` and commits.
+
+### Scenario C — several sessions on the same branch (another terminal or machine)
+
+Two independent sessions may work on one branch without an orchestrator. Rules:
+
+- `git pull` before touching the entry; never rewrite the whole file: **edit by section**
+  (append bullets instead of replacing).
+- On a pull conflict in the entry, resolve by **keeping both sides'** bullets.
+- Better: avoid it by naming an owner (becomes scenario B) or splitting branches (scenario A).
+
+### Scenario D — sub-branches merged into a feature branch
+
+```
+feat/rooms  ←  feat/rooms-api, feat/rooms-ui
+```
+
+Each sub-branch brings its entry. After merging into `feat/rooms` there are several entries with
+different `branch:` values, all `unreleased`. That is correct: the release links them all.
+`feat/rooms` may also have its own summary entry ("Rooms with QR: integrates API and UI").
+
+### Orchestrator checklist before finishing
+
+- [ ] One entry per branch, no duplicates (`verify.sh` checks this).
+- [ ] Every `DEVLOG CONTRIBUTION` consolidated and agents listed in `agents:`.
+- [ ] No subagent modified the log folder (`git log --format='%h %an' -- <log dir>`).
+- [ ] `verify.sh --base <target branch>` passes.
+
+---
+
+## 9. Releases
+
+`close-release.sh` is called from the project's release process, **after** validation (tests,
+build) and **before** the release commit. It makes no commits or tags.
+
+```bash
+close-release.sh 1.2.0 --type minor --previous v1.1.0 --notes notes.md
+# --repo owner/name   if it cannot be derived from origin
+# --dry-run           only lists the entries that would ship
+git add docs/devlog package.json …
+git commit -m "release: v1.2.0"
+```
+
+In order, it:
+
+1. Finds entries with `version: unreleased`.
+2. Writes `releases/v1.2.0.md` with links, notes and a compare link (localized headings).
+3. Changes `version: unreleased` → `version: v1.2.0` on those entries.
+4. Adds the row to the README index.
+
+Safeguards: it refuses if that version's card already exists, and warns when there are no
+unreleased entries (a release with no entries usually means someone skipped the log).
+
+**Typical integration in a `release.sh`:**
+
+```bash
+notes > "$tmp_notes"                      # your notes from commits
+.claude/skills/devlog/scripts/close-release.sh "$NEW" --type "$TYPE" --previous "$LAST" --notes "$tmp_notes" >/dev/null
+git add package.json package-lock.json docs/devlog
+git commit -m "release: v$NEW"
+```
+
+Link the card from the GitHub release:
+`https://github.com/<repo>/blob/v<X.Y.Z>/<log dir>/releases/v<X.Y.Z>.md`.
+
+---
+
+## 10. Verification and CI
+
+`verify.sh [--base <branch>]` checks, without changing anything:
+
+- The branch has **exactly one** entry.
+- Front matter is complete, `type` is valid, `version: unreleased`.
+- The required sections exist and have real content (template comments do not count).
+- No `{{…}}` placeholders are left.
+- Nothing looks like a secret: private keys, GitHub/OpenAI/AWS/Slack tokens, `password=…`,
+  Redis URLs with credentials, Vercel deploy hooks.
+- With `--base`: the entry is part of the diff against that branch.
+
+Exit `0` when valid, `1` otherwise, listing every problem. Use it from the agent before finishing,
+from the reviewer, and from CI.
+
+**PR check on GitHub Actions** (needs the vendored skill: `init.sh --vendor`):
+
+```yaml
+# .github/workflows/devlog.yml
+name: devlog
+on:
+  pull_request:
+    branches: [develop]
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - run: DEVLOG_BRANCH="${{ github.head_ref }}" bash .claude/skills/devlog/scripts/verify.sh --base origin/${{ github.base_ref }}
+```
+
+---
+
+## 11. Adopting it in a project
+
+```bash
+cd my-project
+~/.claude/skills/devlog/scripts/init.sh --lang es --dir docs/bitacora --project "My project" --vendor
+```
+
+- Writes `.devlog.conf`, creates the log folder (README with the index table, entry template,
+  `entries/`, `releases/`) in the chosen language. Never overwrites anything.
+- `--vendor` copies the skill into `.claude/skills/devlog/` so teammates using Claude Code get the
+  skill automatically and CI can run the scripts without `~/.claude`.
+
+Then add to the project's `CLAUDE.md` (write it in whatever language the project uses):
+
+```markdown
+## Change log (mandatory)
+
+Every change on a branch needs its entry in the devlog (see `.devlog.conf`). Follow the `devlog`
+skill before committing or opening a PR: a change without an entry is not finished.
+With several agents, only the orchestrator writes the entry; subagents return `DEVLOG CONTRIBUTION`.
+```
+
+Optional: `Makefile` shortcuts (e.g. `make bitacora`, `make bitacora-check`) and the
+`close-release.sh` call inside the release script.
+
+**Projects with history:** rebuild past versions in `releases/` from `git tag`, `git log` and
+GitHub releases, with `reconstructed: true` in the front matter and a note saying so. Do not
+invent past entries.
+
+**Adding a language:** copy `templates/en/` to `templates/<code>/`, translate `entry.md`,
+`README.md` and the strings in `lang.sh`, keep the front matter keys and the
+`<!-- releases:start/end -->` markers unchanged.
+
+---
+
+## 12. Rules, common mistakes and FAQ
+
+**Rules that never bend**
+
+1. One branch = one entry = one owner.
+2. Only the release changes `version`.
+3. Release cards and the README table are generated (typos excepted).
+4. Released entries are not rewritten: changes go in a new entry on another branch.
+5. Nothing sensitive: secrets, tokens, private URLs, real personal or customer data.
+
+**Common mistakes**
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| Two entries for one branch | Created by hand without checking | Merge them into one, delete the other |
+| Release "with no entries" | Branches merged without a log | Add the entries on a `docs/` branch before publishing |
+| Entry with `version: v1.0.0` on a new branch | Copied a released entry | Set it back to `unreleased` |
+| Conflict in the entry on pull | Two sessions editing one branch | Keep both sides' bullets; name an owner |
+| Index not updated | `<!-- releases:… -->` markers missing | Add them around the table |
+| "No templates for language 'xx'" | `DEVLOG_LANG` has no template folder | Add `templates/xx/` or fix the code |
+
+**FAQ**
+
+- *Hotfixes straight to `main`?* They still get a `fix/…` branch and an entry; the next release closes it.
+- *A dependencies-only or formatting branch?* `chore`, with a short entry. If it does not deserve an entry, it does not deserve its own PR: bundle it.
+- *Renamed a branch?* Update `branch:` in the entry; the file name can stay.
+- *Custom template?* Edit the project's `entry-template.md`; it wins over the skill's. If you rename the required headings, set `DEVLOG_REQUIRED` accordingly.
+
+---
+
+## 13. Quick reference
+
+| Script | Use | stdout |
+|---|---|---|
+| `init.sh [--lang L] [--dir D] [--project N] [--vendor]` | Set up the log in the repo | — |
+| `new-entry.sh ["Title"]` | Create or return the branch entry | Entry path |
+| `verify.sh [--base B]` | Validate the branch entry | — (exit 0/1) |
+| `close-release.sh X.Y.Z [--type] [--previous] [--notes] [--repo] [--dry-run]` | Close a version | Card path |
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `DEVLOG_DIR` | `docs/devlog` | Log folder |
+| `DEVLOG_LANG` | `en` | Content language → `templates/<lang>/` |
+| `DEVLOG_PROTECTED` | `main master develop` | Branches where entries are never created |
+| `DEVLOG_REQUIRED` | from `lang.sh` | Required headings, `A\|B` |
+| `DEVLOG_AGENT` | — | Agent creating the entry (fills `agents:`) |
+| `DEVLOG_BRANCH` | current branch | Branch to verify (CI, detached HEAD) |
+
+Messages go to stderr, without colors outside a terminal; stdout only carries paths, so an agent
+can capture them with `$(…)`.
