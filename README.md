@@ -18,7 +18,8 @@ Descarga `mapadisco-windows-amd64.exe` del último release, verifica su SHA-256 
 tu usuario en `%LOCALAPPDATA%\Programs\mapadisco`, agregando esa carpeta al PATH (sin permisos de Administrador).
 
 También puedes descargar el `.exe` desde **Releases** y abrirlo: la primera vez ofrece instalarse. Abre una terminal
-nueva y escribe `mapadisco`. Para desinstalar: `mapadisco -uninstall`.
+nueva y escribe `mapadisco`. Para actualizar: `mapadisco -update` (verifica el SHA-256 antes de instalar). Para
+desinstalar: `mapadisco -uninstall`.
 
 ## Uso
 
