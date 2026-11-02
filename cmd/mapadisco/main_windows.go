@@ -44,6 +44,8 @@ type config struct {
 	only       string
 	update     bool
 	check      bool
+	ram        bool
+	wslconfig  bool
 }
 
 func main() { os.Exit(run()) }
@@ -96,6 +98,9 @@ func run() int {
 	elevated := winapi.IsAdmin()
 	if cfg.clean {
 		return runClean(u, out, cfg.yes, cfg.only, elevated)
+	}
+	if cfg.ram {
+		return runRAM(u, out, cfg.wslconfig, cfg.yes)
 	}
 	isDriveRoot := len(cfg.target) == 3 && cfg.target[1] == ':' && cfg.target[2] == '\\'
 
@@ -159,8 +164,10 @@ func parseFlags() (cfg config, code int, ok bool) {
 	flag.BoolVar(&cfg.noInstall, "no-install", false, "no ofrece instalarse (uso portable)")
 	flag.BoolVar(&cfg.update, "update", false, "actualiza mapadisco a la última versión publicada (verifica su SHA-256)")
 	flag.BoolVar(&cfg.check, "check", false, "con -update, solo consulta si hay una versión nueva")
+	flag.BoolVar(&cfg.ram, "ram", false, "diagnóstico de memoria RAM: en qué se va, si falta de verdad y qué hacer")
+	flag.BoolVar(&cfg.wslconfig, "wslconfig", false, "con -ram, propone limitar la memoria de WSL en .wslconfig (pregunta antes de guardar)")
 	flag.BoolVar(&cfg.clean, "clean", false, "libera espacio: muestra lo que se puede limpiar y pregunta qué borrar")
-	flag.BoolVar(&cfg.yes, "yes", false, "con -clean, limpia todas las categorías sin preguntar")
+	flag.BoolVar(&cfg.yes, "yes", false, "con -clean, limpia todas las categorías sin preguntar; con -ram -wslconfig, guarda sin preguntar")
 	flag.StringVar(&cfg.only, "only", "", "con -clean, solo estas categorías: "+strings.Join(cleaner.IDs(), ","))
 	showVersion := flag.Bool("version", false, "muestra la versión")
 	flag.Usage = usage
@@ -170,8 +177,16 @@ func parseFlags() (cfg config, code int, ok bool) {
 		fmt.Fprintln(os.Stderr, "-check solo se usa junto con -update: mapadisco -update -check")
 		return cfg, 2, false
 	}
-	if (cfg.yes || cfg.only != "") && !cfg.clean {
-		fmt.Fprintln(os.Stderr, "-yes y -only solo se usan junto con -clean: mapadisco -clean -yes")
+	if cfg.wslconfig && !cfg.ram {
+		fmt.Fprintln(os.Stderr, "-wslconfig solo se usa junto con -ram: mapadisco -ram -wslconfig")
+		return cfg, 2, false
+	}
+	if cfg.only != "" && !cfg.clean {
+		fmt.Fprintln(os.Stderr, "-only solo se usa junto con -clean: mapadisco -clean -only shaders,temp")
+		return cfg, 2, false
+	}
+	if cfg.yes && !cfg.clean && !cfg.wslconfig {
+		fmt.Fprintln(os.Stderr, "-yes solo se usa con -clean o con -ram -wslconfig")
 		return cfg, 2, false
 	}
 	if _, err := cleaner.Select(cfg.only); err != nil {
@@ -209,7 +224,7 @@ func usage() {
 	fmt.Fprintf(w, "mapadisco %s — mapa de uso de disco para Windows (solo lectura)\n\n", version)
 	fmt.Fprintf(w, "Uso: mapadisco [opciones] [ruta]   (por defecto C:\\)\n\n")
 	flag.PrintDefaults()
-	fmt.Fprintf(w, "\nEjemplos:\n  mapadisco\n  mapadisco -admin\n  mapadisco -depth 4 -min 500MB C:\\Users\n  mapadisco -csv reporte.csv\n  mapadisco -clean\n  mapadisco -clean -admin\n  mapadisco -update\n  mapadisco -uninstall\n")
+	fmt.Fprintf(w, "\nEjemplos:\n  mapadisco\n  mapadisco -admin\n  mapadisco -depth 4 -min 500MB C:\\Users\n  mapadisco -csv reporte.csv\n  mapadisco -clean\n  mapadisco -clean -admin\n  mapadisco -ram\n  mapadisco -update\n  mapadisco -uninstall\n")
 }
 
 // resolveTarget normaliza la ruta a escanear ("C:" → "C:\") y valida que sea una carpeta.
