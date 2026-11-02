@@ -5,7 +5,7 @@ type: feat
 author: Marcos Ramos Jacome
 agents: claude
 pr: pending
-version: unreleased
+version: v0.2.0
 ---
 
 # Un solo .exe que se instala solo y bitácora con devlog
