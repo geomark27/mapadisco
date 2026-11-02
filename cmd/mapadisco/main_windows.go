@@ -2,7 +2,6 @@
 package main
 
 import (
-	"bufio"
 	"flag"
 	"fmt"
 	"os"
@@ -12,12 +11,13 @@ import (
 
 	"mapadisco/internal/format"
 	"mapadisco/internal/hotspots"
+	"mapadisco/internal/installer"
 	"mapadisco/internal/report"
 	"mapadisco/internal/scanner"
 	"mapadisco/internal/winapi"
 )
 
-// version se inyecta al compilar desde el tag de git: -ldflags "-X main.version=v1.2.3" (ver scripts/package.sh).
+// version se inyecta al compilar desde el tag de git: -ldflags "-X main.version=v1.2.3" (ver Makefile).
 var version = "dev"
 
 // hotspotMinSize: los sospechosos más pequeños no se muestran.
@@ -34,24 +34,47 @@ type config struct {
 	noProgress bool
 	admin      bool
 	pause      bool
+	install    bool
+	uninstall  bool
+	noInstall  bool
 }
 
 func main() { os.Exit(run()) }
 
 func run() int {
+	// Antes que nada: también -version y -h deben limpiar lo que dejó una reinstalación.
+	if exe, err := installer.Executable(); err == nil {
+		installer.CleanOld(exe)
+	}
 	cfg, code, ok := parseFlags()
 	if !ok {
 		return code
 	}
+	// Sin argumentos y en una consola propia es un doble clic: la ventana se cerraría al terminar.
+	alone := len(os.Args) == 1
+	if alone && winapi.OwnsConsole() {
+		cfg.pause = true
+	}
 	if cfg.pause {
-		defer func() {
-			fmt.Print("\nPresiona Enter para cerrar...")
-			bufio.NewReader(os.Stdin).ReadString('\n')
-		}()
+		defer pauseBeforeExit()
+	}
+
+	colors := winapi.EnableConsole() && !cfg.noColor && os.Getenv("NO_COLOR") == ""
+	palette := report.NewPalette(colors)
+	u := ui{palette}
+	switch {
+	case cfg.uninstall:
+		return runUninstall(u)
+	case cfg.install:
+		return runInstall(u)
+	case !cfg.noInstall && winapi.StdinIsConsole():
+		if done, code := offerInstall(u, alone); done {
+			return code
+		}
 	}
 
 	if cfg.admin && !winapi.IsAdmin() {
-		args := append([]string{"-pause"}, without(os.Args[1:], "-admin", "--admin")...)
+		args := append([]string{"-pause", "-no-install"}, without(os.Args[1:], "-admin", "--admin")...)
 		if err := winapi.RelaunchAsAdmin(args); err != nil {
 			fmt.Fprintln(os.Stderr, "No se pudo elevar:", err)
 			return 1
@@ -60,8 +83,7 @@ func run() int {
 		return 0
 	}
 
-	colors := winapi.EnableConsole() && !cfg.noColor && os.Getenv("NO_COLOR") == ""
-	out := report.New(os.Stdout, report.NewPalette(colors))
+	out := report.New(os.Stdout, palette)
 	elevated := winapi.IsAdmin()
 	isDriveRoot := len(cfg.target) == 3 && cfg.target[1] == ':' && cfg.target[2] == '\\'
 
@@ -120,6 +142,9 @@ func parseFlags() (cfg config, code int, ok bool) {
 	flag.BoolVar(&cfg.noProgress, "no-progress", false, "oculta el progreso")
 	flag.BoolVar(&cfg.admin, "admin", false, "relanza como Administrador (para ver carpetas protegidas)")
 	flag.BoolVar(&cfg.pause, "pause", false, "espera Enter al terminar")
+	flag.BoolVar(&cfg.install, "install", false, "instala mapadisco para tu usuario (sin preguntar) y sale")
+	flag.BoolVar(&cfg.uninstall, "uninstall", false, "desinstala mapadisco: lo quita del PATH y borra su carpeta")
+	flag.BoolVar(&cfg.noInstall, "no-install", false, "no ofrece instalarse (uso portable)")
 	showVersion := flag.Bool("version", false, "muestra la versión")
 	flag.Usage = usage
 	flag.Parse()
@@ -155,7 +180,7 @@ func usage() {
 	fmt.Fprintf(w, "mapadisco %s — mapa de uso de disco para Windows (solo lectura)\n\n", version)
 	fmt.Fprintf(w, "Uso: mapadisco [opciones] [ruta]   (por defecto C:\\)\n\n")
 	flag.PrintDefaults()
-	fmt.Fprintf(w, "\nEjemplos:\n  mapadisco\n  mapadisco -admin\n  mapadisco -depth 4 -min 500MB C:\\Users\n  mapadisco -csv reporte.csv\n")
+	fmt.Fprintf(w, "\nEjemplos:\n  mapadisco\n  mapadisco -admin\n  mapadisco -depth 4 -min 500MB C:\\Users\n  mapadisco -csv reporte.csv\n  mapadisco -uninstall\n")
 }
 
 // resolveTarget normaliza la ruta a escanear ("C:" → "C:\") y valida que sea una carpeta.

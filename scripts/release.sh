@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
-# Publica un release de mapadisco: tag en main y el zip instalable con
+# Publica un release de mapadisco: tag en main y el ejecutable con
 # checksums.txt en GitHub Releases. Lo corre el autor (necesita gh autenticado
 # y permiso de push sobre origin).
+# Antes, la bitácora de la versión debe estar cerrada en main (make release-prep).
 #   make release bump=patch|minor|major
 #   make release ver=vX.Y.Z
 set -euo pipefail
+cd "$(dirname "$0")/.."
+source scripts/version.sh
 
 bump=${1:-}
 ver=${2:-}
 remote=origin
-
-fail() { echo "✗ $*" >&2; exit 1; }
-ok() { echo "✓ $*"; }
 
 command -v gh >/dev/null && gh auth status >/dev/null 2>&1 || fail "hace falta gh autenticado: gh auth login"
 [ "$(git branch --show-current)" = main ] || fail "los releases salen de main: git switch main && git pull --ff-only"
@@ -20,19 +20,11 @@ git fetch --quiet --tags "$remote" main
 [ "$(git rev-parse HEAD)" = "$(git rev-parse "$remote/main")" ] || fail "main no está igual a $remote/main: git pull --ff-only"
 ok "main limpia e igual a $remote/main"
 
-last=$(git describe --tags --abbrev=0 --match 'v[0-9]*' 2>/dev/null || echo v0.0.0)
-if [ -z "$ver" ]; then
-	IFS=. read -r major minor patch <<<"${last#v}"
-	case "$bump" in
-	patch) ver="v$major.$minor.$((patch + 1))" ;;
-	minor) ver="v$major.$((minor + 1)).0" ;;
-	major) ver="v$((major + 1)).0.0" ;;
-	*) fail "indica bump=patch|minor|major o ver=vX.Y.Z" ;;
-	esac
-fi
-[[ "$ver" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || fail "versión inválida: $ver (vMAJOR.MINOR.PATCH)"
-[ "$ver" != "$last" ] && [ "$(printf '%s\n%s\n' "$last" "$ver" | sort -V | tail -1)" = "$ver" ] ||
-	fail "$ver no es mayor que la última versión ($last)"
+last=$(last_version)
+ver=$(next_version "$last" "$bump" "$ver")
+card="$(devlog_dir)/releases/$ver.md"
+[ -f "$card" ] || fail "falta $card: cierra la bitácora antes (make start name=release-${ver//./-} type=chore, make release-prep ver=$ver, PR y make promote)"
+ok "bitácora cerrada: $card"
 ! git ls-remote --exit-code --tags "$remote" "refs/tags/$ver" >/dev/null 2>&1 || fail "el tag $ver ya existe en $remote"
 ! git rev-parse -q --verify "refs/tags/$ver" >/dev/null || fail "el tag $ver ya existe en local: git tag -d $ver"
 ok "versión $last → $ver"
@@ -45,7 +37,9 @@ read -r -p "¿Publicar $ver en GitHub? [s/N]: " answer
 
 git tag -a "$ver" -m "mapadisco $ver"
 git push "$remote" "$ver"
-gh release create "$ver" dist/mapadisco-*.zip dist/checksums.txt --title "mapadisco $ver" --generate-notes --verify-tag ||
-	fail "el tag $ver se subió pero el release no se creó. Reintenta: gh release create $ver dist/mapadisco-*.zip dist/checksums.txt --title \"mapadisco $ver\" --generate-notes --verify-tag"
+repo=$(git remote get-url "$remote" | sed -nE 's#.*github\.com[:/]([^/]+/[^/]+)$#\1#p' | sed 's/\.git$//')
+notes="Bitácora de esta versión: https://github.com/$repo/blob/$ver/$card"
+gh release create "$ver" dist/mapadisco-*.exe dist/checksums.txt --title "mapadisco $ver" --notes "$notes" --generate-notes --verify-tag ||
+	fail "el tag $ver se subió pero el release no se creó. Reintenta: gh release create $ver dist/mapadisco-*.exe dist/checksums.txt --title \"mapadisco $ver\" --generate-notes --verify-tag"
 ok "release $ver publicado: $(gh release view "$ver" --json url --jq .url)"
 echo "Siguiente: git switch develop"

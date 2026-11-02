@@ -1,32 +1,16 @@
-# 001 — Flujo de trabajo y release
+---
+date: 2026-11-01
+branch: feature/flujo-de-trabajo
+type: feat
+author: Marcos Ramos Jacome
+agents: claude
+pr: "#1"
+version: v0.1.0
+---
 
-**Fecha:** 2026-11-01
-**Rama:** feature/flujo-de-trabajo → develop
+# Flujo de trabajo y release
 
-## 1. Solicitud
-
-El autor subió mapadisco a GitHub y pidió que, desde ahora, el trabajo no vaya directo a `main`: cada tarea nace de
-`develop` en su propia rama, se integra a `develop` y de ahí pasa a release. Pidió tomar del Makefile de draco-hq lo
-que aplica a mapadisco en dos puntos:
-
-1. cómo se hace cada desarrollo en su rama y cómo llega a `develop` y luego al release;
-2. cómo se hace el release y cómo se maneja el versionamiento.
-
-También pidió que Claude no haga commits: al terminar cada desarrollo entrega un resumen, el comando de commit que
-ejecutará el autor y lo necesario para seguir.
-
-## 2. Motivación
-
-| Problema | Daño real |
-|---|---|
-| Todo iba a `main` en un solo commit, sin rama de integración | Un cambio a medias queda publicado; no hay dónde revisar antes de publicar |
-| `scripts/build.sh` leía un archivo `VERSION` que no llegó al commit inicial | En el repo, `scripts/build.sh` falla en la primera línea útil: nadie puede compilar el paquete |
-| La versión era un archivo editado a mano | El número del `.exe`, el del zip y el de la guía se desincronizan; nada ata una versión a un commit |
-| Sin release en GitHub ni huella de los archivos | Quien descarga no tiene de dónde bajar una versión concreta ni cómo verificar que el zip está completo |
-| Sin verificación antes del commit ni registro de decisiones | Se sube código sin formatear o sin probar para Windows, y el porqué de cada cambio se pierde |
-| Las pruebas usaban el nombre real del usuario de Windows del autor en rutas | Dato personal en un repo público, contrario a la regla de datos ficticios |
-
-## 3. Diseño técnico
+## Qué cambia
 
 - **Mismo flujo y atajos que draco-hq.** `main ← develop ← feature|fix|docs/<tema>`, una actividad = un commit = un
   PR, fusiones siempre con *merge commit*. Los objetivos de git del Makefile (`sync`, `start`, `push`, `pr`, `merge`,
@@ -68,7 +52,32 @@ ejecutará el autor y lo necesario para seguir.
   - mantener `VERSION` y validar contra el tag: dos fuentes de verdad para el mismo dato;
   - skills de proyecto como las de draco: por ahora `CLAUDE.md` y `make check` alcanzan.
 
-## 4. Archivos
+## Por qué
+
+### Solicitud
+
+El autor subió mapadisco a GitHub y pidió que, desde ahora, el trabajo no vaya directo a `main`: cada tarea nace de
+`develop` en su propia rama, se integra a `develop` y de ahí pasa a release. Pidió tomar del Makefile de draco-hq lo
+que aplica a mapadisco en dos puntos:
+
+1. cómo se hace cada desarrollo en su rama y cómo llega a `develop` y luego al release;
+2. cómo se hace el release y cómo se maneja el versionamiento.
+
+También pidió que Claude no haga commits: al terminar cada desarrollo entrega un resumen, el comando de commit que
+ejecutará el autor y lo necesario para seguir.
+
+### Motivación
+
+| Problema | Daño real |
+|---|---|
+| Todo iba a `main` en un solo commit, sin rama de integración | Un cambio a medias queda publicado; no hay dónde revisar antes de publicar |
+| `scripts/build.sh` leía un archivo `VERSION` que no llegó al commit inicial | En el repo, `scripts/build.sh` falla en la primera línea útil: nadie puede compilar el paquete |
+| La versión era un archivo editado a mano | El número del `.exe`, el del zip y el de la guía se desincronizan; nada ata una versión a un commit |
+| Sin release en GitHub ni huella de los archivos | Quien descarga no tiene de dónde bajar una versión concreta ni cómo verificar que el zip está completo |
+| Sin verificación antes del commit ni registro de decisiones | Se sube código sin formatear o sin probar para Windows, y el porqué de cada cambio se pierde |
+| Las pruebas usaban el nombre real del usuario de Windows del autor en rutas | Dato personal en un repo público, contrario a la regla de datos ficticios |
+
+## Archivos y áreas
 
 - `Makefile` — nuevo: git (de draco), Go para Linux y Windows, `check`, `package`, `release-build`, `promote`, `release`.
 - `scripts/merge.sh`, `scripts/promote.sh` — copiados de draco-hq sin cambios.
@@ -87,7 +96,7 @@ ejecutará el autor y lo necesario para seguir.
 - `internal/scanner/node_test.go`, `internal/report/report_test.go` — usuario ficticio en las rutas.
 - `.gitignore` — `CLAUDE.local.md` y `.claude/terminos-privados.txt`.
 
-## 5. Cómo verificar
+## Cómo probarlo
 
 ```bash
 make                                  # ayuda agrupada: Git, Go, Actividad, Release
@@ -104,7 +113,7 @@ make check
 
 Todos se corrieron en esta actividad con los resultados indicados.
 
-## 6. Pendientes
+## Notas y pendientes
 
 - **Sin probar contra GitHub:** `make push`, `pr`, `merge`, `finish`, `promote` y `release`. Los corre el autor; la
   primera vez, `develop` debe existir en `origin` (`git push -u origin develop`).
@@ -112,3 +121,12 @@ Todos se corrieron en esta actividad con los resultados indicados.
   `make release ver=v1.1.0`; con `bump=` partiría de `v0.0.0`.
 - Opcional en GitHub: dejar solo *Allow merge commits* en los ajustes del repo.
 - CI (GitHub Actions con `make ci`): no se agregó; queda para una actividad propia si el autor lo quiere.
+
+**Nota aclaratoria (2026-11-01, actividad 002):** el autor decidió que el primer release fuera `v0.1.0` y no `v1.1.0`
+como se recomendaba en Pendientes; se publicó con `bump=minor` desde `v0.0.0`. La regla de versionado para `v0.x`
+quedó en `docs/release.md`. El zip y `scripts/package.sh` descritos aquí se reemplazaron en la 002 por un solo `.exe`.
+
+**Migración a devlog (2026-11-01, rama `feat/exe-unico`):** esta entrada se escribió como
+`docs/bitacora/001-flujo-de-trabajo.md` con el formato de draco-hq y se trasladó a `entries/` sin cambiar su
+contenido: «Diseño técnico» pasó a *Qué cambia*, «Solicitud» y «Motivación» a *Por qué*. La rama se llamaba
+`feature/` (antes de adoptar los prefijos de devlog), por eso el campo `branch` conserva ese nombre.

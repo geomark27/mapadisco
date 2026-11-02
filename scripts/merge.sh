@@ -12,7 +12,7 @@ ok() { echo "✓ $*"; }
 
 command -v gh >/dev/null && gh auth status >/dev/null 2>&1 || fail "hace falta gh autenticado: gh auth login"
 branch=$(git branch --show-current)
-case "$branch" in main|"$base"|"") fail "no hay PR que fusionar desde '$branch': trabaja en feature/<tema>";; esac
+case "$branch" in main|"$base"|"") fail "no hay PR que fusionar desde '$branch': trabaja en feat/<tema>";; esac
 
 git fetch --quiet "$remote" "$branch" 2>/dev/null || fail "'$branch' no está en $remote: corre make push"
 [ "$(git rev-list --count "$remote/$branch..$branch")" -eq 0 ] || fail "'$branch' tiene commits sin subir: corre make push"
