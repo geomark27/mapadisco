@@ -3,6 +3,7 @@ package winapi
 import (
 	"errors"
 	"fmt"
+	"runtime"
 	"syscall"
 	"unsafe"
 )
@@ -10,6 +11,7 @@ import (
 var (
 	procSHQueryRecycleBinW = shell32.NewProc("SHQueryRecycleBinW")
 	procSHEmptyRecycleBinW = shell32.NewProc("SHEmptyRecycleBinW")
+	procGetConsoleWindow   = kernel32.NewProc("GetConsoleWindow")
 )
 
 // shQueryRBInfo replica SHQUERYRBINFO (en 64 bits, con alineación natural: 24 bytes).
@@ -29,19 +31,33 @@ func RecycleBinUsage() (bytes, items int64, err error) {
 	return info.size, info.numItems, nil
 }
 
-// EmptyRecycleBin vacía la Papelera de todas las unidades, sin diálogos ni sonido.
+// ErrCanceled indica que el usuario canceló una ventana de Windows (p. ej. la que pide permiso de
+// Administrador) mientras se vaciaba la Papelera.
+var ErrCanceled = errors.New("cancelado en la ventana de Windows")
+
+// EmptyRecycleBin vacía la Papelera de todas las unidades, sin confirmación ni sonido. Bloquea hasta
+// terminar. Si un elemento necesita permiso de Administrador, Windows abre su propia ventana para
+// pedirlo: se la cuelga de la consola para que aparezca delante de ella y no escondida detrás.
 func EmptyRecycleBin() error {
 	const (
 		noConfirmation = 0x1
 		noProgressUI   = 0x2
 		noSound        = 0x4
 		eUnexpected    = 0x8000FFFF // la devuelve cuando la Papelera ya estaba vacía
+		eCanceled      = 0x800704C7 // HRESULT_FROM_WIN32(ERROR_CANCELLED)
 	)
-	r, _, _ := procSHEmptyRecycleBinW.Call(0, 0, noConfirmation|noProgressUI|noSound)
-	if r != 0 && uint32(r) != eUnexpected {
-		return fmt.Errorf("SHEmptyRecycleBin: HRESULT 0x%08X", uint32(r))
+	// La ventana de permiso es modal y corre en este hilo: que no cambie mientras tanto.
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+	owner, _, _ := procGetConsoleWindow.Call()
+	r, _, _ := procSHEmptyRecycleBinW.Call(owner, 0, noConfirmation|noProgressUI|noSound)
+	switch uint32(r) {
+	case 0, eUnexpected:
+		return nil
+	case eCanceled:
+		return ErrCanceled
 	}
-	return nil
+	return fmt.Errorf("SHEmptyRecycleBin: HRESULT 0x%08X", uint32(r))
 }
 
 // IsInUse reconoce el error de Windows cuando otro programa tiene el archivo abierto.
