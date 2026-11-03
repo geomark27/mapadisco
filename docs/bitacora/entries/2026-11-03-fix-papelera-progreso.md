@@ -5,7 +5,7 @@ type: fix
 author: Marcos Ramos
 agents: claude
 pr: pending
-version: unreleased
+version: v0.5.1
 ---
 
 # Avance y aviso de permisos al vaciar la Papelera
