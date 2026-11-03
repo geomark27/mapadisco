@@ -97,7 +97,7 @@ func run() int {
 	out := report.New(os.Stdout, palette)
 	elevated := winapi.IsAdmin()
 	if cfg.clean {
-		return runClean(u, out, cfg.yes, cfg.only, elevated)
+		return runClean(u, out, cfg.yes, cfg.only, elevated, !cfg.noProgress && winapi.StderrIsConsole())
 	}
 	if cfg.ram {
 		return runRAM(u, out, cfg.wslconfig, cfg.yes)

@@ -357,7 +357,7 @@ mapadisco [opciones] [ruta]
 | `-admin` | desactivado | Abre una ventana nueva como Administrador para ver carpetas protegidas. Ver [sección 9](#9-modo-administrador). |
 | `-workers N` | automático | Hilos de lectura en paralelo. Automático = 3 × núcleos del procesador (entre 8 y 96). Bájalo (p. ej. `-workers 4`) en discos mecánicos (HDD) o de red. |
 | `-no-color` | desactivado | Sin colores. También se respeta la variable de entorno `NO_COLOR`. |
-| `-no-progress` | desactivado | Oculta la línea de progreso. |
+| `-no-progress` | desactivado | Oculta la línea de progreso (del escaneo y, con `-clean`, la de vaciar la Papelera). |
 | `-pause` | desactivado | Espera Enter antes de cerrar. Útil desde un acceso directo. Al abrirlo con doble clic se activa solo. |
 | `-install` | — | Instala mapadisco para tu usuario sin preguntar y sale. Ver [sección 3](#3-instalación). |
 | `-uninstall` | — | Desinstala mapadisco: lo quita del `PATH` y borra su carpeta. Ver [sección 14](#14-desinstalación). |
@@ -578,6 +578,32 @@ mapadisco **no se detiene**: salta lo que no puede borrar, sigue con el resto y 
 | **Sin permiso** | Ejecuta `mapadisco -clean -admin`. |
 | **Sigue sin poder** | Usa la ruta **A mano** que indica cada categoría, o abre la carpeta con el comando `explorer "…"` que muestra y borra su contenido tú mismo. |
 
+### Al vaciar la Papelera
+
+Mientras Windows vacía la Papelera, mapadisco muestra cuántos elementos van:
+
+```
+  / Vaciando la Papelera… 1.240 de 5.300 elementos · 12s
+```
+
+Si algún elemento necesita permiso de Administrador (por ejemplo, algo que borraste de `C:\Program Files`),
+**Windows abre su propia ventana para pedirlo y espera tu respuesta**. Esa ventana puede quedar detrás de la
+terminal o solo parpadear en la barra de tareas; si la Papelera deja de avanzar unos segundos, mapadisco te avisa:
+
+```
+  ⚠ La Papelera no avanza hace unos segundos. Si Windows pide permiso de Administrador,
+    su ventana puede estar detrás de esta terminal o parpadeando en la barra de tareas: respóndela para seguir.
+```
+
+Si cancelas esa ventana, mapadisco te dice cuánto se liberó y cuánto quedó:
+
+```
+  ⚠ Papelera de reciclaje: 650,0 MB liberados (48 elementos); quedaron 4 elementos (50,0 MB)
+    · se canceló la ventana de Windows que pedía permiso
+    → Los que piden permiso de Administrador: mapadisco -clean -admin -only papelera
+    → A mano: clic derecho en la Papelera del escritorio > Vaciar Papelera de reciclaje
+```
+
 ### A mano: lo que mapadisco no borra por su cuenta
 
 Al terminar, `mapadisco -clean` mide estas ubicaciones y muestra las que ocupan algo, con sus pasos. No las borra
@@ -779,6 +805,7 @@ habituales solo aparecen al analizar la raíz de una unidad con letra.
 | `-update` dice *"el SHA-256 … no coincide"* | La descarga llegó incompleta o alterada y no se instaló nada. Vuelve a intentarlo; si se repite, avisa al área de Tecnología. |
 | `-clean` dice *"Windows no dejó borrar…"* | Ver [Si Windows no deja borrar algo](#si-windows-no-deja-borrar-algo). |
 | `-clean` no muestra *Temporales de Windows* o los deja a medias | Requieren Administrador: `mapadisco -clean -admin`. |
+| `-clean` se queda en *"Vaciando la Papelera…"* sin avanzar | Windows está esperando que respondas su ventana de permiso: búscala detrás de la terminal o en la barra de tareas. Ver [Al vaciar la Papelera](#al-vaciar-la-papelera). |
 | El antivirus lo bloquea | Ver [Si Windows muestra una advertencia](#si-windows-muestra-una-advertencia). |
 
 ---
