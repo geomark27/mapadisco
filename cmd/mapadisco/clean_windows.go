@@ -1,11 +1,14 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
+	"time"
 
 	"mapadisco/internal/cleaner"
 	"mapadisco/internal/format"
@@ -21,7 +24,8 @@ type cleanItem struct {
 
 // runClean mide las categorías que se pueden limpiar, pregunta cuáles (o todas con -yes), las limpia
 // y explica a dónde ir con lo que Windows no dejó borrar y con lo que solo se libera a mano.
-func runClean(u ui, out *report.Printer, yes bool, only string, elevated bool) int {
+// live indica si se puede mostrar el avance en la consola (stderr).
+func runClean(u ui, out *report.Printer, yes bool, only string, elevated, live bool) int {
 	drive := os.Getenv("SystemDrive")
 	if drive == "" {
 		drive = "C:"
@@ -65,7 +69,7 @@ func runClean(u ui, out *report.Printer, yes bool, only string, elevated bool) i
 	fmt.Println()
 	var freed int64
 	for _, i := range selected {
-		freed += cleanOne(u, items[i], elevated)
+		freed += cleanOne(u, items[i], elevated, live)
 	}
 
 	fmt.Println()
@@ -134,16 +138,11 @@ func chooseTargets(u ui, n int, yes bool) (selected []int, proceed bool) {
 }
 
 // cleanOne limpia una categoría, informa el resultado y, si Windows se opuso, a dónde ir.
-func cleanOne(u ui, it cleanItem, elevated bool) int64 {
+// live indica si se puede mostrar el avance en la consola (stderr).
+func cleanOne(u ui, it cleanItem, elevated, live bool) int64 {
 	t := it.target
 	if t.Kind == cleaner.RecycleBin {
-		if err := winapi.EmptyRecycleBin(); err != nil {
-			u.fail(fmt.Sprintf("%s: Windows no la vació (%v)", t.Label, err))
-			u.hint("→ A mano: " + t.Manual)
-			return 0
-		}
-		u.ok(fmt.Sprintf("%s: %s liberados (%s)", t.Label, format.Size(it.usage.Bytes), count(it.usage.Files, "elemento", "elementos")))
-		return it.usage.Bytes
+		return cleanRecycleBin(u, it, elevated, live)
 	}
 
 	r, err := cleaner.Clean(it.paths, cleaner.Options{InUse: winapi.IsInUse})
@@ -180,6 +179,120 @@ func cleanOne(u ui, it cleanItem, elevated bool) int64 {
 		u.hint(`→ Abrir la carpeta: explorer "` + folder + `"`)
 	}
 	return r.Freed
+}
+
+// cleanRecycleBin vacía la Papelera y cuenta lo que de verdad se fue: si Windows pidió permiso y se
+// canceló, o algo falló a medias, informa lo que quedó y qué hacer.
+func cleanRecycleBin(u ui, it cleanItem, elevated, live bool) int64 {
+	t := it.target
+	before := it.usage
+	after, err := emptyRecycleBin(u, before, live)
+	freed := max(before.Bytes-after.Bytes, 0)
+	items := max(before.Files-after.Files, 0)
+	canceled := errors.Is(err, winapi.ErrCanceled)
+
+	if err != nil && !canceled && freed == 0 {
+		u.fail(fmt.Sprintf("%s: Windows no la vació (%v)", t.Label, err))
+		u.hint("→ A mano: " + t.Manual)
+		return 0
+	}
+	summary := fmt.Sprintf("%s: %s liberados (%s)", t.Label, format.Size(freed), count(items, "elemento", "elementos"))
+	if err == nil && after.Files == 0 {
+		u.ok(summary)
+		return freed
+	}
+
+	fmt.Printf("  %s⚠%s %s; quedaron %s (%s)\n", u.c.Yellow, u.c.Reset, summary,
+		count(after.Files, "elemento", "elementos"), format.Size(after.Bytes))
+	switch {
+	case canceled:
+		u.hint("· se canceló la ventana de Windows que pedía permiso")
+	case err != nil:
+		u.hint(fmt.Sprintf("· Windows no terminó: %v", err))
+	}
+	if !elevated {
+		u.hint("→ Los que piden permiso de Administrador: mapadisco -clean -admin -only papelera")
+	}
+	u.hint("→ A mano: " + t.Manual)
+	return freed
+}
+
+// emptyRecycleBin vacía la Papelera y devuelve lo que quedó en ella. Windows no informa el avance y,
+// si un elemento necesita permiso de Administrador, abre una ventana y espera en silencio; por eso,
+// con live, se muestra cuánto falta y se avisa si deja de avanzar.
+func emptyRecycleBin(u ui, before cleaner.Usage, live bool) (after cleaner.Usage, err error) {
+	done := make(chan error, 1)
+	go func() { done <- winapi.EmptyRecycleBin() }()
+
+	if live {
+		err = watchRecycleBin(u, before.Files, done)
+	} else {
+		fmt.Printf("  %sVaciando la Papelera (%s)… si Windows pide permiso, su ventana puede quedar detrás de esta.%s\n",
+			u.c.Dim, count(before.Files, "elemento", "elementos"), u.c.Reset)
+		err = <-done
+	}
+
+	b, n, qerr := winapi.RecycleBinUsage()
+	switch {
+	case qerr == nil:
+		return cleaner.Usage{Bytes: b, Files: n}, err
+	case err != nil:
+		return before, err // no se sabe cuánto se fue: se asume que nada
+	default:
+		return cleaner.Usage{}, nil
+	}
+}
+
+// watchRecycleBin muestra en stderr cuántos elementos van mientras Windows vacía la Papelera, hasta
+// que done entrega el resultado. Si deja de avanzar, avisa una vez dónde buscar la ventana de Windows.
+func watchRecycleBin(u ui, total int64, done <-chan error) error {
+	const spin = `|/-\`
+	const clear = "\r\x1b[2K"
+	start := time.Now()
+	drain := cleaner.NewDrain(total, start)
+
+	// Consultar la Papelera tarda si tiene mucho: se hace aparte, una consulta a la vez.
+	var left atomic.Int64
+	left.Store(-1)
+	stop := make(chan struct{})
+	defer close(stop)
+	go func() {
+		t := time.NewTicker(time.Second)
+		defer t.Stop()
+		for {
+			select {
+			case <-stop:
+				return
+			case <-t.C:
+				if _, n, err := winapi.RecycleBinUsage(); err == nil {
+					left.Store(n)
+				}
+			}
+		}
+	}()
+
+	warned := false
+	tick := time.NewTicker(200 * time.Millisecond)
+	defer tick.Stop()
+	for i := 0; ; i++ {
+		select {
+		case err := <-done:
+			fmt.Fprint(os.Stderr, clear)
+			return err
+		case now := <-tick.C:
+			if n := left.Load(); n >= 0 {
+				drain.Update(n, now)
+			}
+			if !warned && drain.Stalled(now) {
+				warned = true
+				fmt.Fprintf(os.Stderr, "%s  %s⚠%s La Papelera no avanza hace unos segundos. Si Windows pide permiso de Administrador,\n"+
+					"    su ventana puede estar detrás de esta terminal o parpadeando en la barra de tareas: respóndela para seguir.\n",
+					clear, u.c.Yellow, u.c.Reset)
+			}
+			fmt.Fprintf(os.Stderr, "%s  %c Vaciando la Papelera… %s de %s elementos · %ds", clear, spin[i%len(spin)],
+				format.Thousands(drain.Done()), format.Thousands(drain.Total()), int(now.Sub(start).Seconds()))
+		}
+	}
 }
 
 func count(n int64, one, many string) string {
